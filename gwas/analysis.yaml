@@ -1,0 +1,29 @@
+# Parameters for the pipeline.
+
+id: base_gwas
+name: Base GWAS
+description: Genome-wide analysis base pipeline for the [Norwegian Mother, Father and Child Cohort Study (MoBa)](https://www.fhi.no/en/ch/studies/moba).
+release: "2026.01.06"
+pheno_version: v12
+pheno_release: pheno_anthropometrics_25-12-12_hdgb
+pheno_table_name: phenotypes_26-01-08
+work_folder: /mnt/work/marc/moba # Folder where the results should be stored
+scratch_folder: /mnt/scratch/marc/moba # Folder where intermediate files should be stored
+
+analyses:
+  birth_weight:
+      name: Birth weight test
+      description: GWAS of birth weight 
+      phenotype: weight_birth
+      phenotype_name: Birth weight
+      phenotype_type: quantitative
+      covariates:
+        - n_previous_deliveries
+        - pregnancy_duration
+      populations:
+        - children
+        - mothers
+        - fathers
+        - parents
+        
+        
