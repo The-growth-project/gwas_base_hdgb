@@ -1,14 +1,14 @@
 ------------------------------------------------------------------------
 
 ---
-title: "maternal_weight"
+title: "phenotypes"
 format: gmd
 editor: visual
 ---
 
-## *Maternal weight*
+## *Phenotypes*
 
-*Maternal weight trajectory.*
+*Preparation of the phenotype table for the GWAS pipeline and documentation of phenotypic distribution.*
 
 ### *Libraries and settings*
 
@@ -16,6 +16,7 @@ editor: visual
 
 library(here)
 library(conflicted)
+library(yaml)
 library(janitor)
 library(glue)
 library(tidyverse)
@@ -34,32 +35,14 @@ theme_set(theme_bw(base_size = 24))
 
 ```
 
-### *Load data*
+### *Load data from pheno release*
 
 ```{r}
 
 pheno_version <- "pheno_anthropometrics_25-12-12_hdgb"
 
-pregnancy_data <- read.table(
-  file = glue("/mnt/archive/moba/pheno/v12/{pheno_version}/pregnancy.gz"),
-  header = T,
-  sep = "\t"
-)
-
 mfr_data <- read.table(
   file = glue("/mnt/archive/moba/pheno/v12/{pheno_version}/mfr.gz"),
-  header = T,
-  sep = "\t"
-)
-
-standardized_anthropometrics <- read.table(
-  file = glue("/mnt/archive/moba/pheno/v12/{pheno_version}/child_anthropometrics_standardized.gz"),
-  header = T,
-  sep = "\t"
-)
-
-parents_data <- read.table(
-  file = glue("/mnt/archive/moba/pheno/v12/{pheno_version}/parent.gz"),
   header = T,
   sep = "\t"
 )
@@ -72,18 +55,16 @@ population_clusters <- read.table(
 
 ```
 
-### *Make a table of maternal anthropometric data*
+### *Make a table with phenotypes, exclusion variables, and covariates*
 
 ```{r}
 
-# Exclude gestational diabets & preeclampsia serious & eclampsia
-# Stratify by parity using age as covariate
-# Smoking as covariate (beginning vs end)
-
 required_columns <- c("preg_id", "child_id", "mother_id", "father_id", "child_sentrix_id", "mother_sentrix_id", "father_sentrix_id", "child_batch", "mother_batch", "father_batch")
-covariate_columns <- c("n_previous_deliveries", "mother_age", "mother_smoking_beginning", "mother_smoking_end", "pregnancy_duration")
+exclusion_columns <- c("pregnancy_duration_term", "pop_inference")
+covariate_columns <- c("n_previous_deliveries", "pregnancy_duration", "plural_birth", "sex")
+phenotype_columns <- c("weight_birth")
 
-mother_anthropometrics_data <- mfr_data %>% 
+phenotype_data <- mfr_data %>% 
   left_join(
     population_clusters %>% 
       select(
@@ -94,41 +75,83 @@ mother_anthropometrics_data <- mfr_data %>%
   ) %>% 
   mutate(
     n_previous_deliveries = factor(n_previous_deliveries, levels = c("0 (primiparous)", "1", "2", "3", "4 or more")),
-    mother_birth_year = ifelse(mother_birth_year < 1944, NA, mother_birth_year),
-    mother_age = birth_year - mother_birth_year,
-    mother_age = ifelse(is.na(mother_age), median(mother_age, na.rm = T), mother_age),
-    mother_smoking_beginning = ifelse(!is.na(mother_smoking_beginning) & (mother_smoking_beginning == "Daily" | mother_smoking_beginning == "Sometimes"), 1, 0),
-    mother_smoking_end = ifelse(!is.na(mother_smoking_end) & (mother_smoking_end == "Daily" | mother_smoking_end == "Sometimes"), 1, 0)
-  ) %>% 
-  filter(
-    pregnancy_duration_term == 1 & is.na(plural_birth) & is.na(eclampsia_total) & is.na(mother_diabetes) & is.na(plural_birth) & pop_inference %in% c("EUR", "EUR_core")
+    plural_birth = ifelse(is.na(plural_birth), "Single", "Plural"),
+    plural_birth = factor(plural_birth, levels = c("Single", "Plural")),
+    sex = case_when(
+      sex == 1 ~ "Male",
+      sex == 2 ~ "Female"
+    ),
+    sex = factor(sex, levels = c("Female", "Male"))
   ) %>% 
   select(
-    all_of(required_columns), all_of(covariate_columns), n_previous_deliveries, mother_weight_before_mfr = mother_weight_before, mother_weight_end
-  ) %>% 
-  left_join(
-    pregnancy_data %>% 
-      select(
-        child_id, mother_weight_last_check_30w, mother_weight_end_self, hospitalized_prolonged_nausea_vomiting
-      ),
-    by = "child_id"
-  ) %>% 
-  filter(
-    is.na(hospitalized_prolonged_nausea_vomiting)
-  ) %>% 
-  left_join(
-    parents_data %>% 
-      select(
-        child_id, mother_height, mother_weight_beginning_self, mother_weight_15w, mother_height_self, mother_age_15w, mother_weight_6m, mother_weight_18m, mother_weight_3y, mother_height_3y, mother_weight_5y, mother_height_5y, mother_weight_8y, mother_height_8y, mother_height_14y = height_mother_14m, height_mother_14m, mother_weight_14y = weight_mother_14m, mother_age_14y = age_answering_q_14m, mother_weight_45y = weight_now_45m, mother_age_45y = age_answering_q_45m, baby_body_type_hm, mother_recalled_childhood_shape = childhood_weight_comparison_hm, age_50y = age_answering_q_hm, mother_height_50y = height_hm, mother_weight_50y = weight_hm
-      ),
-    by = "child_id"
+    all_of(required_columns), all_of(exclusion_columns), all_of(covariate_columns), all_of(phenotype_columns)
   )
 
-print(paste0("- N pregnancies: ", length(unique(mother_anthropometrics_data$preg_id))))
-print(paste0("- N mothers: ", length(unique(mother_anthropometrics_data$mother_id))))
-print(paste0("- N mothers genotyped: ", length(unique(mother_anthropometrics_data$mother_sentrix_id))))
-print(paste0("- N children: ", length(unique(mother_anthropometrics_data$child_id))))
-print(paste0("- N chilren genotyped: ", length(unique(mother_anthropometrics_data$child_sentrix_id))))
+```
+
+### *Exclusion*
+
+```{r}
+
+print("Number of participants before exclusion")
+n_pregnancies <- length(unique(phenotype_data$preg_id))
+print(paste0("- N pregnancies: ", n_pregnancies))
+n_children_genotyped <- length(unique(phenotype_data$child_sentrix_id))
+print(paste0("- N children genotyped: ", n_children_genotyped))
+n_mothers_genotyped <- length(unique(phenotype_data$mother_sentrix_id))
+print(paste0("- N mothers genotyped: ", n_mothers_genotyped))
+n_fathers_genotyped <- length(unique(phenotype_data$father_sentrix_id))
+print(paste0("- N fathers genotyped: ", n_fathers_genotyped))
+
+print("Exclusion of PCA outliers")
+
+n_pregnancies_previous <- n_pregnancies
+n_children_genotyped_previous <- n_children_genotyped
+n_mothers_genotyped_previous <- n_mothers_genotyped
+n_fathers_genotyped_previous <- n_fathers_genotyped
+
+phenotype_data <- phenotype_data %>% 
+  filter(
+    pop_inference %in% c("EUR", "EUR_core")
+  )
+
+n_pregnancies <- length(unique(phenotype_data$preg_id))
+print(paste0("- N pregnancies excluded : ", n_pregnancies_previous - n_pregnancies))
+n_children_genotyped <- length(unique(phenotype_data$child_sentrix_id))
+print(paste0("- N children genotyped excluded: ", n_children_genotyped_previous - n_children_genotyped))
+n_mothers_genotyped <- length(unique(phenotype_data$mother_sentrix_id))
+print(paste0("- N mothers genotyped excluded: ", n_mothers_genotyped_previous - n_mothers_genotyped))
+n_fathers_genotyped <- length(unique(phenotype_data$father_sentrix_id))
+print(paste0("- N fathers genotyped excluded: ", n_fathers_genotyped_previous - n_fathers_genotyped))
+
+
+print("Exclusion of birth before 37w or after 42w")
+
+n_pregnancies_previous <- n_pregnancies
+n_children_genotyped_previous <- n_children_genotyped
+n_mothers_genotyped_previous <- n_mothers_genotyped
+n_fathers_genotyped_previous <- n_fathers_genotyped
+
+phenotype_data <- phenotype_data %>% 
+  filter(
+    pregnancy_duration_term == 1
+  )
+
+n_pregnancies <- length(unique(phenotype_data$preg_id))
+print(paste0("- N pregnancies excluded : ", n_pregnancies_previous - n_pregnancies))
+n_children_genotyped <- length(unique(phenotype_data$child_sentrix_id))
+print(paste0("- N children genotyped excluded: ", n_children_genotyped_previous - n_children_genotyped))
+n_mothers_genotyped <- length(unique(phenotype_data$mother_sentrix_id))
+print(paste0("- N mothers genotyped excluded: ", n_mothers_genotyped_previous - n_mothers_genotyped))
+n_fathers_genotyped <- length(unique(phenotype_data$father_sentrix_id))
+print(paste0("- N fathers genotyped excluded: ", n_fathers_genotyped_previous - n_fathers_genotyped))
+
+
+print("Remaining after exclusion criteria")
+print(paste0("- N pregnancies: ", n_pregnancies))
+print(paste0("- N children genotyped: ", n_children_genotyped))
+print(paste0("- N mothers genotyped: ", n_mothers_genotyped))
+print(paste0("- N fathers genotyped: ", n_fathers_genotyped))
 
 ```
 
@@ -136,8 +159,8 @@ print(paste0("- N chilren genotyped: ", length(unique(mother_anthropometrics_dat
 
 ```{r}
 
-discrete_covariate_columns <- c("n_previous_deliveries", "mother_smoking_beginning", "mother_smoking_end")
-discrete_covariate_names <- c("Parity", "Smoking beginning", "Smoking end")
+discrete_covariate_columns <- c("n_previous_deliveries", "plural_birth", "sex")
+discrete_covariate_names <- c("Parity", "Plural birth", "Sex")
 
 for (i in 1:length(discrete_covariate_columns)) {
   
@@ -146,7 +169,7 @@ for (i in 1:length(discrete_covariate_columns)) {
   
   plot <- ggplot() +
     geom_bar(
-      data = mother_anthropometrics_data,
+      data = phenotype_data,
       mapping = aes(
         x = !!sym(column)
       )
@@ -167,7 +190,7 @@ for (i in 1:length(discrete_covariate_columns)) {
     )
   
 png(
-  filename = here(glue("phenotype_exploration/plots/{column}_prevalence.png")),
+  filename = here(glue("phenotypes/plots/{column}_prevalence.png")),
   width = 800,
   height = 600
 )
@@ -177,8 +200,8 @@ dev <- dev.off()
 }
 
 
-continuous_covariate_columns <- c("mother_age", "pregnancy_duration")
-continuous_covariate_names <- c("Age at beginning", "Pregnancy duration")
+continuous_covariate_columns <- c("pregnancy_duration")
+continuous_covariate_names <- c("Pregnancy duration")
 
 for (i in 1:length(continuous_covariate_columns)) {
   
@@ -187,7 +210,7 @@ for (i in 1:length(continuous_covariate_columns)) {
   
   plot <- ggplot() +
     geom_histogram(
-      data = mother_anthropometrics_data,
+      data = phenotype_data,
       mapping = aes(
         x = !!sym(column)
       )
@@ -208,7 +231,7 @@ for (i in 1:length(continuous_covariate_columns)) {
     )
   
 png(
-  filename = here(glue("phenotype_exploration/plots/{column}_prevalence.png")),
+  filename = here(glue("phenotypes/plots/{column}_prevalence.png")),
   width = 800,
   height = 600
 )
@@ -217,623 +240,25 @@ dev <- dev.off()
   
 }
 
-
 ```
 
-### *Clean and Standardize maternal anthropometric values*
+### *Phenotype relative to covariates*
 
 ```{r}
 
-min_height <- 125
-min_weight <- 35
-max_weight <- 150
-max_weight_pregnant <- 200
+phenotype_columns <- c("weight_birth")
+phenotype_column_names <- c("Birth weight")
 
-mother_cleaned_anthropometrics_data <- mother_anthropometrics_data %>% 
-  mutate(
-    mother_height = ifelse(mother_height < min_height, NA, mother_height),
-    mother_height_self = ifelse(mother_height_self < min_height, NA, mother_height_self),
-    mother_height_3y = ifelse(mother_height_3y < min_height, NA, mother_height_3y),
-    mother_height_5y = ifelse(mother_height_5y < min_height, NA, mother_height_5y),
-    mother_height_8y = ifelse(mother_height_8y < min_height, NA, mother_height_8y),
-    mother_height_14y = ifelse(mother_height_14y < min_height, NA, mother_height_14y),
-    mother_height_50y = ifelse(mother_height_50y < min_height, NA, mother_height_50y),
-    mother_weight_beginning_self = ifelse(mother_weight_beginning_self < min_weight | mother_weight_beginning_self > max_weight, NA, mother_weight_beginning_self),
-    mother_weight_15w = ifelse(mother_weight_15w < min_weight, NA, mother_weight_15w),
-    mother_weight_15w = ifelse(mother_weight_15w > mother_weight_beginning_self + 50, NA, mother_weight_15w),
-    mother_weight_last_check_30w = ifelse(mother_weight_last_check_30w < min_weight | mother_weight_last_check_30w > max_weight_pregnant, NA, mother_weight_last_check_30w),
-    mother_weight_end_self = ifelse(mother_weight_end_self < min_weight | mother_weight_end_self > max_weight_pregnant, NA, mother_weight_end_self),
-    mother_weight_6m = ifelse(mother_weight_6m < min_weight | mother_weight_6m > max_weight, NA, mother_weight_6m),
-    mother_weight_18m = ifelse(mother_weight_18m < min_weight | mother_weight_18m > max_weight, NA, mother_weight_18m),
-    mother_weight_18m = ifelse(mother_weight_6m > 120 & mother_weight_18m < 60, NA, mother_weight_18m),
-    mother_weight_3y = ifelse(mother_weight_3y < min_weight | mother_weight_3y > max_weight, NA, mother_weight_3y),
-    mother_weight_5y = ifelse(mother_weight_5y < min_weight | mother_weight_5y > max_weight, NA, mother_weight_5y),
-    mother_weight_8y = ifelse(mother_weight_8y < min_weight | mother_weight_8y > max_weight, NA, mother_weight_8y),
-    mother_weight_14y = ifelse(mother_weight_14y < min_weight | mother_weight_14y > max_weight, NA, mother_weight_14y),
-    mother_weight_45y = ifelse(mother_weight_45y < min_weight | mother_weight_45y > max_weight, NA, mother_weight_50y),
-    mother_weight_50y = ifelse(mother_weight_50y < min_weight | mother_weight_50y > max_weight, NA, mother_weight_50y)
-  ) %>% 
-  rowwise() %>% 
-  mutate(
-    mother_median_height = median(c(mother_height, mother_height_self, mother_height_3y, mother_height_5y, mother_height_8y, mother_height_14y, mother_height_50y), na.rm = T),
-    baby_body_type_hm_factor = factor(baby_body_type_hm, levels = c("Tynnere", "Omtrent gjennomsnittlig", "Lubnere/rundere", "Vet ikke", "Ønsker ikke å svare")),
-    mother_recalled_childhood_shape_factor = factor(mother_recalled_childhood_shape, levels = c("Tynnere", "Omtrent gjennomsnittlig", "Tykkere", "Vet ikke", "Ønsker ikke å svare")),
-    mother_weight_45_50y = case_when(
-      is.na(mother_weight_45y) ~ mother_weight_50y,
-      is.na(mother_weight_50y) ~ mother_weight_45y,
-      !is.na(mother_weight_45y) & !is.na(mother_weight_50y) ~ (mother_weight_45y + mother_weight_50y)/2
-    )
-  )
+discrete_covariate_columns <- c("n_previous_deliveries", "plural_birth", "sex")
+discrete_covariate_names <- c("Parity", "Plural birth", "Sex")
 
+continuous_covariate_columns <- c("pregnancy_duration")
+continuous_covariate_names <- c("Pregnancy duration")
 
-columns <- c("baby_body_type_hm_factor", "mother_recalled_childhood_shape_factor")
-column_names <- c("Recalled shape as baby", "Recalled shape as child")
-
-for (column_i in 1:length(columns)) {
+for (column_i in 1:length(phenotype_columns)) {
   
-  column <- columns[column_i]
-  column_name <- column_names[column_i]
-
-plot <- ggplot(
-    data = mother_cleaned_anthropometrics_data,
-    mapping = aes(
-      x = !!sym(column),
-      y = mother_weight_beginning_self
-    )
-) +
-  geom_violin(
-    fill = "grey90"
-  ) +
-  geom_boxplot(
-    width=0.3
-  ) +
-  scale_x_discrete(
-    name = column_name
-  ) +
-  scale_y_continuous(
-    name = "Weight beginning of pregnancy"
-  ) +
-  theme(
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1
-    ),
-    panel.grid.major.x = element_blank()
-  )
-
-png(
-  filename = here(glue("phenotype_exploration/plots/{column}_vs_beginning.png")),
-  width = 800,
-  height = 600
-)
-grid.draw(plot)
-dev <- dev.off()
-
-}
-
-columns <- c("mother_weight_15w", "mother_weight_last_check_30w", "mother_weight_end_self", "mother_weight_6m", "mother_weight_18m", "mother_weight_3y", "mother_weight_5y", "mother_weight_8y", "mother_weight_14y", "mother_weight_45y", "mother_weight_50y", "mother_weight_45_50y")
-column_names <- c("Pregnancy weight 15w", "Pregnancy weight 30w", "Weight end of pregnancy", "Weight 6m post pregnancy", "Weight 18m post pregnancy", "Weight 3y post pregnancy", "Weight 5y post pregnancy", "Weight 8y post pregnancy", "Weight 14y post pregnancy", "Weight age 45", "Weight age 50", "Weight age 45-50")
-
-for (column_i in 1:length(columns)) {
-  
-  column <- columns[column_i]
-  column_name <- column_names[column_i]
-
-plot <- ggplot(
-    data = mother_cleaned_anthropometrics_data,
-    mapping = aes(
-      x = mother_weight_beginning_self,
-      y = !!sym(column)
-    )
-) +
-  geom_point(
-    alpha = 0.2
-  ) +
-  geom_smooth(
-    # method = "lm"
-  ) +
-  geom_density2d(
-    col = "white"
-  ) +
-  scale_x_continuous(
-    name = "Weight beginning of pregnancy"
-  ) +
-  scale_y_continuous(
-    name = column_name
-  )
-
-png(
-  filename = here(glue("phenotype_exploration/plots/{column}_vs_beginning.png")),
-  width = 800,
-  height = 600
-)
-grid.draw(plot)
-dev <- dev.off()
-
-}
-
-weight_diff <- mother_cleaned_anthropometrics_data %>% 
-  mutate(
-    weight_beginning = mother_weight_beginning_self,
-    weight_diff_15w = 100 * (mother_weight_15w - mother_weight_beginning_self)/mother_weight_beginning_self,
-    weight_diff_30w = 100 * (mother_weight_last_check_30w - mother_weight_beginning_self)/mother_weight_beginning_self,
-    weight_diff_end = 100 * (mother_weight_end_self - mother_weight_beginning_self)/mother_weight_beginning_self,
-    weight_diff_6m = 100 * (mother_weight_6m - mother_weight_beginning_self)/mother_weight_beginning_self,
-    weight_diff_18m = 100 * (mother_weight_18m - mother_weight_beginning_self)/mother_weight_beginning_self,
-    weight_diff_3y = 100 * (mother_weight_3y - mother_weight_beginning_self)/mother_weight_beginning_self,
-    weight_diff_5y = 100 * (mother_weight_5y - mother_weight_beginning_self)/mother_weight_beginning_self,
-    weight_diff_8y = 100 * (mother_weight_8y - mother_weight_beginning_self)/mother_weight_beginning_self,
-    weight_diff_14y = 100 * (mother_weight_14y - mother_weight_beginning_self)/mother_weight_beginning_self,
-    weight_diff_45y = 100 * (mother_weight_45y - mother_weight_beginning_self)/mother_weight_beginning_self,
-    weight_diff_50y = 100 * (mother_weight_50y - mother_weight_beginning_self)/mother_weight_beginning_self,
-    mother_weight_45_50y = 100 * (mother_weight_45_50y - mother_weight_beginning_self)/mother_weight_beginning_self
-  ) %>% 
-  select(
-    mother_id, weight_beginning, weight_diff_15w, weight_diff_30w, weight_diff_end, weight_diff_6m, weight_diff_18m, weight_diff_3y, weight_diff_5y, weight_diff_8y, weight_diff_14y, mother_weight_45_50y
-  ) %>% 
-  pivot_longer(cols = c(weight_diff_15w, weight_diff_30w, weight_diff_end, weight_diff_6m, weight_diff_18m, weight_diff_3y, weight_diff_5y, weight_diff_8y, weight_diff_14y, mother_weight_45_50y)
-  ) %>% 
-  mutate(
-    time = factor(name, levels = c("weight_diff_15w", "weight_diff_30w", "weight_diff_end", "weight_diff_6m", "weight_diff_18m", "weight_diff_3y", "weight_diff_5y", "weight_diff_8y", "weight_diff_14y", "mother_weight_45_50y"))
-  )
-
-levels(weight_diff$time) <- c("15w", "30w", "end", "6m", "18m", "3y", "5y", "8y", "14y", "45-50y") 
-
-plot <- ggplot(
-    data = weight_diff,
-    mapping = aes(
-      x = time,
-      y = value
-    )
-    ) +
-  geom_violin(
-    fill = "grey90"
-  ) +
-  geom_boxplot(
-    width=0.3
-  ) +
-  scale_y_continuous(
-    name = "Weight relative to beginning [%]"
-  ) +
-  theme(
-    axis.title.x = element_blank(),
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1
-    ),
-    panel.grid.major.x = element_blank()
-  )
-
-png(
-  filename = here(glue("phenotype_exploration/plots/weight_difference.png")),
-  width = 800,
-  height = 600
-)
-grid.draw(plot)
-dev <- dev.off()
-  
-
-weight_diff_sumstat <- weight_diff %>% 
-  group_by(time) %>% 
-  filter(!is.na(value)) %>% 
-  summarize(
-    mean = mean(value),
-    sd = sd(value),
-    n = n()
-  )
-
-weight_diff_sumstat
-
-```
-
-```{r}
-
-plot <- ggplot() +
-  geom_hline(
-    yintercept = 0,
-    col = "grey60"
-  ) +
-  geom_point(
-    data = weight_diff_sumstat,
-    mapping = aes(
-      x = time,
-      y = mean
-    ),
-      size = 2
-    ) +
-  geom_segment(
-    data = weight_diff_sumstat,
-    mapping = aes(
-      x = time,
-      xend = time,
-      y = mean - 1.96 * sd,
-      yend = mean + 1.96 * sd
-    )
-  ) +
-  scale_y_continuous(
-    name = "Weight relative to beginning [%]"
-  ) +
-  theme(
-    axis.title.x = element_blank(),
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1
-    ),
-    panel.grid.major.x = element_blank()
-  )
-
-png(
-  filename = here(glue("phenotype_exploration/plots/weight_difference_mean.png")),
-  width = 800,
-  height = 600
-)
-grid.draw(plot)
-dev <- dev.off()
-
-grid.draw(plot)
-
-```
-
-### *Compute BMI*
-
-```{r}
-
-mother_cleaned_anthropometrics_data <- mother_cleaned_anthropometrics_data %>% 
-  mutate(
-    mother_bmi_beginning = ifelse(is.finite(mother_weight_beginning_self) & is.finite(mother_median_height), 10000 * mother_weight_beginning_self / (mother_median_height * mother_median_height), NA),
-    mother_bmi_15w = ifelse(is.finite(mother_weight_15w) & is.finite(mother_median_height), 10000 * mother_weight_15w / (mother_median_height * mother_median_height), NA),
-    mother_bmi_30w = ifelse(is.finite(mother_weight_last_check_30w) & is.finite(mother_median_height), 10000 * mother_weight_last_check_30w / (mother_median_height * mother_median_height), NA),
-    mother_bmi_end = ifelse(is.finite(mother_weight_end_self) & is.finite(mother_median_height), 10000 * mother_weight_end_self / (mother_median_height * mother_median_height), NA),
-    mother_bmi_6m = ifelse(is.finite(mother_weight_6m) & is.finite(mother_median_height), 10000 * mother_weight_6m / (mother_median_height * mother_median_height), NA),
-    mother_bmi_18m = ifelse(is.finite(mother_weight_18m) & is.finite(mother_median_height), 10000 * mother_weight_18m / (mother_median_height * mother_median_height), NA),
-    mother_bmi_3y = ifelse(is.finite(mother_weight_3y) & is.finite(mother_median_height), 10000 * mother_weight_3y / (mother_median_height * mother_median_height), NA),
-    mother_bmi_5y = ifelse(is.finite(mother_weight_5y) & is.finite(mother_median_height), 10000 * mother_weight_5y / (mother_median_height * mother_median_height), NA),
-    mother_bmi_8y = ifelse(is.finite(mother_weight_8y) & is.finite(mother_median_height), 10000 * mother_weight_8y / (mother_median_height * mother_median_height), NA),
-    mother_bmi_14y = ifelse(is.finite(mother_weight_14y) & is.finite(mother_median_height), 10000 * mother_weight_14y / (mother_median_height * mother_median_height), NA),
-    mother_bmi_45_50y = ifelse(is.finite(mother_weight_45_50y) & is.finite(mother_median_height), 10000 * mother_weight_45_50y / (mother_median_height * mother_median_height), NA)
-  )
-
-
-columns <- c("baby_body_type_hm_factor", "mother_recalled_childhood_shape_factor")
-column_names <- c("Recalled shape as baby", "Recalled shape as child")
-
-for (column_i in 1:length(columns)) {
-  
-  column <- columns[column_i]
-  column_name <- column_names[column_i]
-
-plot <- ggplot(
-    data = mother_cleaned_anthropometrics_data,
-    mapping = aes(
-      x = !!sym(column),
-      y = mother_bmi_beginning
-    )
-) +
-  geom_violin(
-    fill = "grey90"
-  ) +
-  geom_boxplot(
-    width=0.3
-  ) +
-  scale_x_discrete(
-    name = column_name
-  ) +
-  scale_y_continuous(
-    name = "BMI beginning of pregnancy"
-  ) +
-  theme(
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1
-    ),
-    panel.grid.major.x = element_blank()
-  )
-
-png(
-  filename = here(glue("phenotype_exploration/plots/bmi_beginning_vs_{column}.png")),
-  width = 800,
-  height = 600
-)
-grid.draw(plot)
-dev <- dev.off()
-
-}
-
-columns <- c("mother_bmi_15w", "mother_bmi_30w", "mother_bmi_end", "mother_bmi_6m", "mother_bmi_18m", "mother_bmi_3y", "mother_bmi_5y", "mother_bmi_8y", "mother_bmi_14y", "mother_bmi_45_50y")
-column_names <- c("Pregnancy BMI 15w", "Pregnancy BMI 30w", "BMI end of pregnancy", "BMI 6m post pregnancy", "BMI 18m post pregnancy", "BMI 3y post pregnancy", "BMI 5y post pregnancy", "BMI 8y post pregnancy", "BMI 14y post pregnancy", "BMI age 45-50")
-
-for (column_i in 1:length(columns)) {
-  
-  column <- columns[column_i]
-  column_name <- column_names[column_i]
-
-plot <- ggplot(
-    data = mother_cleaned_anthropometrics_data,
-    mapping = aes(
-      x = mother_bmi_beginning,
-      y = !!sym(column)
-    )
-) +
-  geom_point(
-    alpha = 0.2
-  ) +
-  geom_smooth(
-    # method = "loess"
-  ) +
-  geom_density2d(
-    col = "white"
-  ) +
-  scale_x_continuous(
-    name = "BMI beginning of pregnancy"
-  ) +
-  scale_y_continuous(
-    name = column_name
-  )
-
-png(
-  filename = here(glue("phenotype_exploration/plots/{column}_vs_beginning.png")),
-  width = 800,
-  height = 600
-)
-grid.draw(plot)
-dev <- dev.off()
-
-}
-
-mother_cleaned_anthropometrics_data <- mother_cleaned_anthropometrics_data %>% 
-  mutate(
-    bmi_diff_15w_beginning = 100 * (mother_bmi_15w - mother_bmi_beginning)/mother_bmi_beginning,
-    bmi_diff_30w_beginning = 100 * (mother_bmi_30w - mother_bmi_beginning)/mother_bmi_beginning,
-    bmi_diff_end_beginning = 100 * (mother_bmi_end - mother_bmi_beginning)/mother_bmi_beginning,
-    bmi_diff_6m_beginning = 100 * (mother_bmi_6m - mother_bmi_beginning)/mother_bmi_beginning,
-    bmi_diff_18m_beginning = 100 * (mother_bmi_18m - mother_bmi_beginning)/mother_bmi_beginning,
-    bmi_diff_3y_beginning = 100 * (mother_bmi_3y - mother_bmi_beginning)/mother_bmi_beginning,
-    bmi_diff_5y_beginning = 100 * (mother_bmi_5y - mother_bmi_beginning)/mother_bmi_beginning,
-    bmi_diff_8y_beginning = 100 * (mother_bmi_8y - mother_bmi_beginning)/mother_bmi_beginning,
-    bmi_diff_14y_beginning = 100 * (mother_bmi_14y - mother_bmi_beginning)/mother_bmi_beginning,
-    bmi_diff_45_50y_beginning = 100 * (mother_bmi_45_50y - mother_bmi_beginning)/mother_bmi_beginning,
-    bmi_diff_6m_end = 100 * (mother_bmi_6m - mother_bmi_end)/mother_bmi_end,
-    bmi_diff_18m_end = 100 * (mother_bmi_18m - mother_bmi_end)/mother_bmi_end,
-    bmi_diff_3y_end = 100 * (mother_bmi_3y - mother_bmi_end)/mother_bmi_end,
-    bmi_diff_5y_end = 100 * (mother_bmi_5y - mother_bmi_end)/mother_bmi_end,
-    bmi_diff_8y_end = 100 * (mother_bmi_8y - mother_bmi_end)/mother_bmi_end,
-    bmi_diff_14y_end = 100 * (mother_bmi_14y - mother_bmi_end)/mother_bmi_end,
-    bmi_diff_45_50y_end = 100 * (mother_bmi_45_50y - mother_bmi_end)/mother_bmi_end
-  ) %>% 
-  select(
-    all_of(required_columns), all_of(covariate_columns), mother_bmi_beginning, bmi_diff_15w_beginning, bmi_diff_30w_beginning, bmi_diff_end_beginning, bmi_diff_6m_beginning, bmi_diff_18m_beginning, bmi_diff_3y_beginning, bmi_diff_5y_beginning, bmi_diff_8y_beginning, bmi_diff_14y_beginning, bmi_diff_45_50y_beginning, mother_bmi_end, bmi_diff_6m_end, bmi_diff_18m_end, bmi_diff_3y_end, bmi_diff_5y_end, bmi_diff_8y_end, bmi_diff_14y_end, bmi_diff_45_50y_end
-  )
-
-bmi_diff_beginning <- mother_cleaned_anthropometrics_data %>% 
-  select(
-    child_id, mother_id, mother_bmi_beginning, bmi_diff_15w_beginning, bmi_diff_30w_beginning, bmi_diff_end_beginning, bmi_diff_6m_beginning, bmi_diff_18m_beginning, bmi_diff_3y_beginning, bmi_diff_5y_beginning, bmi_diff_8y_beginning, bmi_diff_14y_beginning, bmi_diff_45_50y_beginning
-  ) %>% 
-  pivot_longer(
-    cols = c(bmi_diff_15w_beginning, bmi_diff_30w_beginning, bmi_diff_end_beginning, bmi_diff_6m_beginning, bmi_diff_18m_beginning, bmi_diff_3y_beginning, bmi_diff_5y_beginning, bmi_diff_8y_beginning, bmi_diff_14y_beginning, bmi_diff_45_50y_beginning)
-  ) %>% 
-  mutate(
-    time = factor(name, levels = c("bmi_diff_15w_beginning", "bmi_diff_30w_beginning", "bmi_diff_end_beginning", "bmi_diff_6m_beginning", "bmi_diff_18m_beginning", "bmi_diff_3y_beginning", "bmi_diff_5y_beginning", "bmi_diff_8y_beginning", "bmi_diff_14y_beginning", "bmi_diff_45_50y_beginning"))
-  )
-
-levels(bmi_diff_beginning$time) <- c("15w", "30w", "end", "6m", "18m", "3y", "5y", "8y", "14y", "45-50y") 
-
-plot <- ggplot(
-    data = bmi_diff_beginning,
-    mapping = aes(
-      x = time,
-      y = value
-    )
-    ) +
-  geom_violin(
-    fill = "grey90"
-  ) +
-  geom_boxplot(
-    width=0.3
-  ) +
-  scale_y_continuous(
-    name = "BMI relative to beginning [%]"
-  ) +
-  theme(
-    axis.title.x = element_blank(),
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1
-    ),
-    panel.grid.major.x = element_blank()
-  )
-
-png(
-  filename = here(glue("phenotype_exploration/plots/bmi_difference_beginning.png")),
-  width = 800,
-  height = 600
-)
-grid.draw(plot)
-dev <- dev.off()
-  
-
-bmi_diff_sumstat_beginning <- bmi_diff_beginning %>% 
-  group_by(time) %>% 
-  filter(!is.na(value)) %>% 
-  summarize(
-    mean = mean(value),
-    sd = sd(value),
-    n = n()
-  )
-
-bmi_diff_sumstat_beginning
-
-```
-
-```{r}
-
-plot <- ggplot() +
-  geom_hline(
-    yintercept = 0,
-    col = "grey60"
-  ) +
-  geom_point(
-    data = bmi_diff_sumstat_beginning,
-    mapping = aes(
-      x = time,
-      y = mean
-    ),
-      size = 2
-    ) +
-  geom_segment(
-    data = bmi_diff_sumstat_beginning,
-    mapping = aes(
-      x = time,
-      xend = time,
-      y = mean - 1.96 * sd,
-      yend = mean + 1.96 * sd
-    )
-  ) +
-  scale_y_continuous(
-    name = "BMI relative to beginning [%]"
-  ) +
-  theme(
-    axis.title.x = element_blank(),
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1
-    ),
-    panel.grid.major.x = element_blank()
-  )
-
-png(
-  filename = here(glue("phenotype_exploration/plots/bmi_difference_beginning_mean.png")),
-  width = 800,
-  height = 600
-)
-grid.draw(plot)
-dev <- dev.off()
-
-
-```
-
-```{r}
-
-bmi_diff_end <- mother_cleaned_anthropometrics_data %>% 
-  select(
-    child_id, mother_id, mother_bmi_end, bmi_diff_6m_end, bmi_diff_18m_end, bmi_diff_3y_end, bmi_diff_5y_end, bmi_diff_8y_end, bmi_diff_14y_end, bmi_diff_45_50y_end
-  ) %>% 
-  pivot_longer(
-    cols = c(bmi_diff_6m_end, bmi_diff_18m_end, bmi_diff_3y_end, bmi_diff_5y_end, bmi_diff_8y_end, bmi_diff_14y_end, bmi_diff_45_50y_end)
-  ) %>% 
-  mutate(
-    time = factor(name, levels = c("bmi_diff_6m_end", "bmi_diff_18m_end", "bmi_diff_3y_end", "bmi_diff_5y_end", "bmi_diff_8y_end", "bmi_diff_14y_end", "bmi_diff_45_50y_end"))
-  )
-
-levels(bmi_diff_end$time) <- c("6m", "18m", "3y", "5y", "8y", "14y", "45-50y") 
-
-plot <- ggplot(
-    data = bmi_diff_end,
-    mapping = aes(
-      x = time,
-      y = value
-    )
-    ) +
-  geom_violin(
-    fill = "grey90"
-  ) +
-  geom_boxplot(
-    width=0.3
-  ) +
-  scale_y_continuous(
-    name = "BMI relative to end [%]"
-  ) +
-  theme(
-    axis.title.x = element_blank(),
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1
-    ),
-    panel.grid.major.x = element_blank()
-  )
-
-png(
-  filename = here(glue("phenotype_exploration/plots/bmi_difference_beginning.png")),
-  width = 800,
-  height = 600
-)
-grid.draw(plot)
-dev <- dev.off()
-  
-
-bmi_diff_sumstat_end <- bmi_diff_end %>% 
-  group_by(time) %>% 
-  filter(!is.na(value)) %>% 
-  summarize(
-    mean = mean(value),
-    sd = sd(value),
-    n = n()
-  )
-
-bmi_diff_sumstat_end
-
-```
-
-```{r}
-
-plot <- ggplot() +
-  geom_hline(
-    yintercept = 0,
-    col = "grey60"
-  ) +
-  geom_point(
-    data = bmi_diff_sumstat_end,
-    mapping = aes(
-      x = time,
-      y = mean
-    ),
-      size = 2
-    ) +
-  geom_segment(
-    data = bmi_diff_sumstat_end,
-    mapping = aes(
-      x = time,
-      xend = time,
-      y = mean - 1.96 * sd,
-      yend = mean + 1.96 * sd
-    )
-  ) +
-  scale_y_continuous(
-    name = "BMI relative to end [%]"
-  ) +
-  theme(
-    axis.title.x = element_blank(),
-    axis.text.x = element_text(
-      angle = 45,
-      hjust = 1
-    ),
-    panel.grid.major.x = element_blank()
-  )
-
-png(
-  filename = here(glue("phenotype_exploration/plots/bmi_difference_mean.png")),
-  width = 800,
-  height = 600
-)
-grid.draw(plot)
-dev <- dev.off()
-
-
-```
-
-### *BMI difference relative to covariates*
-
-```{r}
-
-bmi_diff_columns <- c("bmi_diff_15w_beginning", "bmi_diff_30w_beginning", "bmi_diff_end_beginning", "bmi_diff_6m_beginning", "bmi_diff_18m_beginning", "bmi_diff_3y_beginning", "bmi_diff_5y_beginning", "bmi_diff_8y_beginning", "bmi_diff_14y_beginning", "bmi_diff_45_50y_beginning", "bmi_diff_6m_end", "bmi_diff_18m_end", "bmi_diff_3y_end", "bmi_diff_5y_end", "bmi_diff_8y_end", "bmi_diff_14y_end", "bmi_diff_45_50y_end")
-bmi_diff_column_names <- c("BMI 15w vs beginning", "BMI 30w vs beginning", "BMI end vs beginning", "BMI 6m vs beginning", "BMI 18m vs beginning", "BMI 3y vs beginning", "BMI 5y vs beginning", "BMI 8y vs beginning", "BMI 14y vs beginning", "BMI 45-50y vs beginning", "BMI 6m vs end", "BMI 18m vs end", "BMI 3y vs end", "BMI 5y vs end", "BMI 8y vs end", "BMI 14y vs end", "BMI 45-50y vs end")
-
-for (column_i in 1:length(columns)) {
-  
-  column <- bmi_diff_columns[column_i]
-  column_name <- bmi_diff_column_names[column_i]
-  
-  discrete_covariate_columns <- c("n_previous_deliveries", "mother_smoking_beginning", "mother_smoking_end")
-  discrete_covariate_names <- c("Parity", "Smoking beginning", "Smoking end")
+  column <- phenotype_columns[column_i]
+  column_name <- phenotype_column_names[column_i]
   
   for (column_j in 1:length(discrete_covariate_columns)) {
     
@@ -841,7 +266,7 @@ for (column_i in 1:length(columns)) {
     covariate_column_name <- discrete_covariate_names[column_j]
     
     plot <- ggplot(
-      data = mother_cleaned_anthropometrics_data,
+      data = phenotype_data,
       mapping = aes(
         x = !!sym(covariate_column),
         y = !!sym(column)
@@ -868,7 +293,7 @@ for (column_i in 1:length(columns)) {
       )
     
     png(
-      filename = here(glue("phenotype_exploration/plots/{column}_prevalence.png")),
+      filename = here(glue("phenotypes/plots/{column}_vs_{covariate_column}.png")),
       width = 800,
       height = 600
     )
@@ -878,39 +303,36 @@ for (column_i in 1:length(columns)) {
   }
   
   
-  continuous_covariate_columns <- c("mother_age", "pregnancy_duration")
-  continuous_covariate_names <- c("Age at beginning", "Pregnancy duration")
-  
   for (column_j in 1:length(continuous_covariate_columns)) {
     
     covariate_column <- continuous_covariate_columns[column_j]
     covariate_column_name <- continuous_covariate_names[column_j]
-
-plot <- ggplot(
-    data = mother_cleaned_anthropometrics_data,
-    mapping = aes(
+    
+    plot <- ggplot(
+      data = phenotype_data,
+      mapping = aes(
         x = as.numeric(!!sym(covariate_column)),
         y = !!sym(column)
-    )
-) +
-  geom_point(
-    alpha = 0.2
-  ) +
-  geom_smooth(
-    # method = "loess"
-  ) +
-  geom_density2d(
-    col = "white"
-  ) +
-  scale_x_continuous(
+      )
+    ) +
+      geom_point(
+        alpha = 0.2
+      ) +
+      geom_smooth(
+        # method = "loess"
+      ) +
+      geom_density2d(
+        col = "white"
+      ) +
+      scale_x_continuous(
         name = covariate_column_name
-  ) +
-  scale_y_continuous(
+      ) +
+      scale_y_continuous(
         name = column_name
-  )
+      )
     
     png(
-      filename = here(glue("phenotype_exploration/plots/{column}_prevalence.png")),
+      filename = here(glue("phenotypes/plots/{column}_vs_{covariate_column}.png")),
       width = 800,
       height = 600
     )
@@ -926,14 +348,37 @@ plot <- ggplot(
 
 ```{r}
 
-mother_cleaned_anthropometrics_data_numeric <- mother_cleaned_anthropometrics_data %>% 
-  mutate(
-    n_previous_deliveries = as.numeric(n_previous_deliveries)
-  )
+# Get the path to file expected by the gwas pipeline
+
+gwas_settings <- read_yaml(file.path(here(), "gwas", "analysis.yaml"))
+
+gwas_pheno_file_directory <- file.path(gwas_settings$work_folder, gwas_settings$id, gwas_settings$release, "pheno", gwas_settings$pheno_version, gwas_settings$pheno_release)
+
+if (!dir.exists(gwas_pheno_file_directory)) {
+  
+  dir.create(gwas_pheno_file_directory, recursive = T)
+  
+}
+
+gwas_pheno_file_path <- file.path(gwas_pheno_file_directory, glue("{gwas_settings$pheno_table_name}.gz"))
+
+
+# Convert factors to numeric
+
+phenotype_data_gwas <- phenotype_data
+
+for (column in discrete_covariate_columns) {
+  
+  phenotype_data_gwas[[column]] <- as.numeric(phenotype_data_gwas[[column]])
+  
+}
+
+
+# Write table
 
 write.table(
-  x = mother_cleaned_anthropometrics_data_numeric,
-  file = gzfile("/mnt/work/marc/moba/weight_retention/phenos/mother_cleaned_anthropometrics_data_25.12.16.gz"),
+  x = phenotype_data_gwas,
+  file = gzfile(gwas_pheno_file_path),
   col.names = T,
   row.names = F,
   sep = "\t",

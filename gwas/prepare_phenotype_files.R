@@ -22,23 +22,8 @@ conflicts_prefer(dplyr::select)
 
 
 # Command line input
-
-debug <- F
-
-if (debug) {
   
-  args <- c(
-    "/mnt/work/marc/moba/weight_retention/phenos/mother_cleaned_anthropometrics_data_25.12.12.gz",
-    "/mnt/archive/moba/geno/HDGB-MoBaGenetics/2025.09.25/moba_genotypes_2025.09.25_common.psam",
-    "/mnt/archive/moba/geno/HDGB-MoBaGenetics/2025.09.25/pca/pca_only_moba/moba_genotypes_2025.09.25.pcs",
-    "/mnt/work/marc/moba/reprouction/24-03-16/pheno/v12/pheno_anthropometrics_24-03-13",
-  )
-  
-} else {
-  
-  args <- commandArgs(TRUE)
-  
-}
+args <- commandArgs(TRUE)
 
 if (length(args) != 4) {
   
@@ -233,6 +218,7 @@ for (column in names(pheno_table_gwas_mother)[!pheno_table_gwas_mother %in% phen
 }
 
 pheno_table_gwas_parents <- rbind(pheno_table_gwas_parents_mother, pheno_table_gwas_parents_father)
+
 
 # Write tables
 
