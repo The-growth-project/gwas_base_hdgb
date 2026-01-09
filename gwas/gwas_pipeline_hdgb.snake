@@ -11,6 +11,10 @@ import random
 # conda activate snakemake
 # snakemake --snakefile gwas/gwas_pipeline_hdgb.snake --cores 12 --use-conda --rerun-incomplete
 #
+# Tips:
+# - Adjust the number of cores based on the load of the server, adjust the number of cores used by each rule accordingly.
+# - Consider running first a dry run using the '-n' option
+#
 ###################################################################################################
 
 moba_base_path = '/mnt/archive/moba'
@@ -153,7 +157,7 @@ def get_binary_option_step2(analysis):
 
 # Function returning slightly different block sizes
 def get_block_size(bsize):
-    return math.floor((1 +  random.random() * 0.05) * bsize)
+    return math.floor((1 +  random.random() * 0.15) * bsize)
 
 
 
