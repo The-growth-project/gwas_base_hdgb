@@ -14,6 +14,7 @@ import random
 # Tips:
 # - Adjust the number of cores based on the load of the server, adjust the number of cores used by each rule accordingly.
 # - Consider running first a dry run using the '-n' option
+# - To restart a run without loosing output try using the '-t' option
 #
 ###################################################################################################
 
@@ -262,7 +263,7 @@ rule regenie_step1:
         pheno_binary = lambda wildcards: get_binary_option_step1(wildcards.analysis),
         pheno_covariates = lambda wildcards: get_covariates(wildcards.analysis, wildcards.population),
         parameters_output = os.path.join(regenie_step1_folder, '{analysis}', 'step1_pop_{population}_pheno_{phenotype}'),
-        block_size = lambda wildcards: get_block_size(5000)
+        block_size = 1000
     conda:
         "envs/regenie_3.2.yaml"
     threads: 6
@@ -281,7 +282,7 @@ rule regenie_step1:
         {params.pheno_covariates} \
         --keep {input.samples_list} \
         --extract {input.variant_list} \
-        --bsize {params.block_size} \
+        --bsize {get_block_size(params.block_size)} \
         {params.pheno_binary} \
         --loocv \
         --out {params.parameters_output}
@@ -301,7 +302,7 @@ rule REGENIE_step2:
         pheno_binary = lambda wildcards: get_binary_option_step2(wildcards.analysis),
         pheno_covariates = lambda wildcards: get_covariates(wildcards.analysis, wildcards.population),
         output_stem = os.path.join(regenie_step2_folder, '{analysis}', 'step2_pop_{population}_pheno_chr{chr}'),
-        block_size = lambda wildcards: get_block_size(5000)
+        block_size = 1000
     conda:
         "envs/regenie_3.2.yaml"
     threads: 6
@@ -317,7 +318,7 @@ rule REGENIE_step2:
         --phenoCol {params.pheno_column} \
         --covarFile {input.pheno_file} \
         {params.pheno_covariates} \
-        --bsize {params.block_size} \
+        --bsize {get_block_size(params.block_size)} \
         {params.pheno_binary} \
         --strict \
         --gz \
