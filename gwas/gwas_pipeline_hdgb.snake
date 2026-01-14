@@ -282,7 +282,7 @@ rule regenie_step1:
         {params.pheno_covariates} \
         --keep {input.samples_list} \
         --extract {input.variant_list} \
-        --bsize {get_block_size(params.block_size)} \
+        --bsize {{get_block_size(1000)}} \
         {params.pheno_binary} \
         --loocv \
         --out {params.parameters_output}
@@ -318,7 +318,7 @@ rule REGENIE_step2:
         --phenoCol {params.pheno_column} \
         --covarFile {input.pheno_file} \
         {params.pheno_covariates} \
-        --bsize {get_block_size(params.block_size)} \
+        --bsize {{get_block_size(1000)}} \
         {params.pheno_binary} \
         --strict \
         --gz \
