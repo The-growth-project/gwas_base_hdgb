@@ -276,7 +276,7 @@ rule regenie_step1:
             subprocess.run(
                 [
                     "regenie",
-                    "--step", 2,
+                    "--step", "1",
                     "--threads", threads,
                     "--apply-rint",
                     "--pgen", params.plink_release_stem,
@@ -327,7 +327,7 @@ rule REGENIE_step2:
             subprocess.run(
                 [
                     "regenie",
-                    "--step", 2,
+                    "--step", "2",
                     "--apply-rint",
                     "--bgen", input.bgen_file,
                     "--sample", input.sample_file,
