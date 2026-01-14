@@ -277,7 +277,7 @@ rule regenie_step1:
                 [
                     "regenie",
                     "--step", "1",
-                    "--threads", threads,
+                    "--threads", str(threads),
                     "--apply-rint",
                     "--pgen", params.plink_release_stem,
                     "--phenoFile", input.pheno_file,
@@ -328,6 +328,7 @@ rule REGENIE_step2:
                 [
                     "regenie",
                     "--step", "2",
+                    "--threads", str(threads),
                     "--apply-rint",
                     "--bgen", input.bgen_file,
                     "--sample", input.sample_file,
