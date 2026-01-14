@@ -1,4 +1,5 @@
 import os
+import shutil
 import math
 import random
 
@@ -267,26 +268,38 @@ rule regenie_step1:
     conda:
         "envs/regenie_3.2.yaml"
     threads: 6
-    shell:
-        """
-        regenie \
-        --step 1 \
-        --apply-rint \
-        --threads {threads} \
-        --gz \
-        --pgen {params.plink_release_stem} \
-        --phenoFile {input.pheno_file} \
-        --phenoCol {params.pheno_column} \
-        --covarFile {input.pheno_file} \
-        --strict \
-        {params.pheno_covariates} \
-        --keep {input.samples_list} \
-        --extract {input.variant_list} \
-        --bsize {get_block_size(1000)} \
-        {params.pheno_binary} \
-        --loocv \
-        --out {params.parameters_output}
-        """
+    run:
+        try:
+            
+            bsize = get_block_size(params.block_size)
+            
+            subprocess.run(
+                [
+                    "regenie",
+                    "--step", 2,
+                    "--threads", threads,
+                    "--apply-rint",
+                    "--pgen", params.plink_release_stem,
+                    "--phenoFile", input.pheno_file,
+                    "--phenoCol", params.pheno_column,
+                    "--covarFile", input.pheno_file,
+                    params.pheno_covariates,
+                    params.pheno_binary,
+                    "--keep", input.samples_list,
+                    "--extract", input.variant_list,
+                    "--bsize", bsize,
+                    "--strict",
+                    "--gz",
+                    "--loocv", 
+                    "--out", params.parameters_output
+                ],
+                check=True
+            )
+        
+        except Exception as e:
+            print(f"An exception occurred in rule {rule}.")
+            print(e)
+            
 
 rule REGENIE_step2:
     'Step 2 of Regenie'
@@ -306,43 +319,48 @@ rule REGENIE_step2:
     conda:
         "envs/regenie_3.2.yaml"
     threads: 6
-    shell:
-        """
-        regenie \
-        --step 2 \
-        --apply-rint \
-        --threads {threads} \
-        --bgen {input.bgen_file} \
-        --sample {input.sample_file} \
-        --phenoFile {input.pheno_file} \
-        --phenoCol {params.pheno_column} \
-        --covarFile {input.pheno_file} \
-        {params.pheno_covariates} \
-        --bsize {get_block_size(1000)} \
-        {params.pheno_binary} \
-        --strict \
-        --gz \
-        --pred {input.step1_file} \
-        --out {params.output_stem} \
+    run:
+        try:
+            
+            bsize = get_block_size(params.block_size)
+            
+            subprocess.run(
+                [
+                    "regenie",
+                    "--step", 2,
+                    "--apply-rint",
+                    "--bgen", input.bgen_file,
+                    "--sample", input.sample_file,
+                    "--phenoFile", input.pheno_file,
+                    "--phenoCol", params.pheno_column,
+                    "--covarFile", input.pheno_file,
+                    params.pheno_covariates,
+                    params.pheno_binary,
+                    "--bsize", bsize,
+                    "--strict",
+                    "--gz",
+                    "--pred", input.step1_file,
+                    "--out", params.output_stem
+                ],
+                check=True
+            )
+            
+            regenie_file = f"{params.output_stem}_{params.pheno_column}.regenie.gz"
+            output_file = output.output_file
+            
+            if regenie_file == output_file:
+                open(output_file, 'a').close()
+
+            elif os.path.isfile(regenie_file):
+                shutil.move(regenie_file, output_file)
+
+            else:
+                raise FileNotFoundError(f"Regenie output file ({regenie_file}) not found")
         
-        REGENIE_FILE={params.output_stem}_{params.pheno_column}.regenie.gz
-        OUTPUT_FILE={output.output_file}
-        
-        if  [[ "$REGENIE_FILE" == "$OUTPUT_FILE" ]]; then
-        
-            touch $OUTPUT_FILE
-        
-        elif [[ -f $REGENIE_FILE ]]; then
-        
-            mv $REGENIE_FILE $OUTPUT_FILE
-        
-        else
-        
-            echo "Regenie output file ($REGENIE_FILE) not found"
-        
-        fi
-        
-        """
+        except Exception as e:
+            print(f"An exception occurred in rule {rule}.")
+            print(e)
+
 
 rule merge_format_document:
     'Merges and formats results for the different chromosomes, writes documentation on the association results'
