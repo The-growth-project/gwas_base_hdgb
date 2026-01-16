@@ -630,7 +630,10 @@ for (chromosome in chromosomes) {
     sep = " ",
     stringsAsFactors = F
   ) %>% 
-    clean_names()
+    clean_names() %>%
+    filter(
+      !is.na(log10p)
+    )
   
   association_df[[length(association_df) + 1]] <- regenie_output
   annotation_df[[length(annotation_df) + 1]] <- get_top_hits(regenie_output)
@@ -642,6 +645,12 @@ association_df <- do.call(rbind, association_df)
 annotation_df <- do.call(rbind, annotation_df)
 
 print(paste0(Sys.time(), "     Exporting merged results to ", results_folder))
+
+if (!dir.exists(results_folder)) {
+
+  dir.create(results_folder, recursive = T)
+
+}
 
 write.table(
   x = association_df,
@@ -668,7 +677,7 @@ doc_folder <- file.path(docs_folder, analysis_name)
 
 if (!dir.exists(doc_folder)) {
   
-  dir.create(doc_folder)
+  dir.create(doc_folder, recursive = T)
   
 }
 
@@ -686,7 +695,7 @@ write(
 )
 
 write(
-  x = glue("Association results by regenie for {pheno} in {population}, followed by dimple prining of the hits passing p < {p_value_threshold}.\n"),
+  x = glue("Association results by regenie for {pheno} in {population}, followed by simple pruning of the hits passing p < {p_value_threshold}.\n"),
   file = md_file,
   append = T
 )
