@@ -549,6 +549,33 @@ if (F) {
   
 }
 
+# Housekeeping
+
+if (!dir.exists(results_folder)) {
+  
+  dir.create(results_folder, recursive = T)
+  
+}
+
+if (!dir.exists(doc_folder)) {
+  
+  dir.create(doc_folder, recursive = T)
+  
+}
+
+if (!dir.exists(figures_folder)) {
+  
+  dir.create(figures_folder, recursive = T)
+  
+}
+
+if (!dir.exists(annotation_folder)) {
+  
+  dir.create(annotation_folder, recursive = T)
+  
+}
+
+
 # GWAS parameters
 
 split <- strsplit(regenie_output_path, "/")[[1]]
@@ -649,26 +676,6 @@ md_file <- file.path(doc_folder, glue("pop_{population}_pheno_{pheno}.md"))
 figures_folder <- file.path(doc_folder, "figures")
 annotation_folder <- file.path(doc_folder, "annotation")
 
-# Housekeeping
-
-if (!dir.exists(doc_folder)) {
-
-    dir.create(doc_folder)
-
-}
-
-if (!dir.exists(figures_folder)) {
-
-    dir.create(figures_folder)
-
-}
-
-if (!dir.exists(annotation_folder)) {
-
-    dir.create(annotation_folder)
-
-}
-
 
 # Write documentation
 
@@ -752,12 +759,12 @@ if (nrow(annotation_df_hla) > 0) {
 
 
 write(
-  x = paste0("| SNP | chr | bp | allele 0 | allele 1 | allele 1 freq | beta | se | p | n |"),
+  x = paste0("| SNP | chr | bp | allele 0 | allele 1 | allele 1 freq | beta | se | log10p | n |"),
   file = md_file, 
   append = T
 )
 write(
-  x = paste0("| --- | --- | -- | -------- | -------- | ------------- | ---- | -- | - | - |"),
+  x = paste0("| --- | --- | -- | -------- | -------- | ------------- | ---- | -- | ------ | - |"),
   file = md_file, 
   append = T
 )
@@ -774,11 +781,11 @@ if (nrow(annotation_df_not_hla) > 0) {
     allele1_freq <- annotation_df_not_hla$a1freq[i]
     beta <- annotation_df_not_hla$beta[i]
     se <- annotation_df_not_hla$se[i]
-    p <- annotation_df_not_hla$p[i]
+    p <- annotation_df_not_hla$log10p[i]
     n <- annotation_df_not_hla$n[i]
     
     write(
-      x = glue("| {snp} | {chr} | {bp} | {allele0} | {allele1} | {allele1_freq} | {beta} | {se} | {p} | {n} |"),
+      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " |"),
       file = md_file, 
       append = T
     )
@@ -816,11 +823,11 @@ if (nrow(annotation_df_hla) > 0) {
     allele1_freq <- annotation_df_hla$a1freq[i]
     beta <- annotation_df_hla$beta[i]
     se <- annotation_df_hla$se[i]
-    p <- annotation_df_hla$p[i]
+    p <- annotation_df_hla$log10p[i]
     n <- annotation_df_hla$n[i]
     
     write(
-      x = glue("| {snp} | {chr} | {bp} | {allele0} | {allele1} | {allele1_freq} | {beta} | {se} | {p} | {n} |"),
+      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " |"),
       file = md_file, 
       append = T
     )

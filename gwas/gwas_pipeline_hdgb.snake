@@ -12,7 +12,7 @@ import random
 # snakemake --snakefile gwas/gwas_pipeline_hdgb.snake --cores 12 --use-conda --rerun-incomplete
 #
 # Tips:
-# - Adjust the number of cores based on the load of the server, adjust the number of cores used by each rule accordingly.
+# - Adjust the number of cores based on the load of the server, adjust the number of cores used by each rule accordingly. 
 # - Consider running first a dry run using the '-n' option
 # - To restart a run without loosing output try using the '-t' option
 #
@@ -265,6 +265,9 @@ rule regenie_step1:
     threads: 6
     shell:
         """
+        bsize=params.block_size
+        bsize_jitter=$(echo "scale=10; (1 + $RANDOM/32767 * 0.2) * $bsize"
+        
         regenie \
         --step 1 \
         --apply-rint \
@@ -278,7 +281,7 @@ rule regenie_step1:
         {params.pheno_covariates} \
         --keep {input.samples_list} \
         --extract {input.variant_list} \
-        --bsize {params.block_size} \
+        --bsize $bsize_jitter \
         {params.pheno_binary} \
         --loocv \
         --out {params.parameters_output}
@@ -304,6 +307,9 @@ rule REGENIE_step2:
     threads: 6
     shell:
         """
+        bsize=params.block_size
+        bsize_jitter=$(echo "scale=10; (1 + $RANDOM/32767 * 0.2) * $bsize"
+        
         regenie \
         --step 2 \
         --apply-rint \
@@ -314,7 +320,7 @@ rule REGENIE_step2:
         --phenoCol {params.pheno_column} \
         --covarFile {input.pheno_file} \
         {params.pheno_covariates} \
-        --bsize {params.block_size} \
+        --bsize $bsize_jitter \
         {params.pheno_binary} \
         --strict \
         --gz \
