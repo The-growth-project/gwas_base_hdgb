@@ -551,6 +551,12 @@ if (F) {
 
 # Housekeeping
 
+doc_folder <- file.path(docs_folder, analysis_name)
+
+md_file <- file.path(doc_folder, glue("pop_{population}_pheno_{pheno}.md"))
+figures_folder <- file.path(doc_folder, "figures")
+annotation_folder <- file.path(doc_folder, "annotation")
+
 if (!dir.exists(results_folder)) {
   
   dir.create(results_folder, recursive = T)
@@ -669,21 +675,6 @@ write.table(
   quote = F,
   sep = "\t"
 )
-
-
-# Set up doc files
-
-doc_folder <- file.path(docs_folder, analysis_name)
-
-if (!dir.exists(doc_folder)) {
-  
-  dir.create(doc_folder, recursive = T)
-  
-}
-
-md_file <- file.path(doc_folder, glue("pop_{population}_pheno_{pheno}.md"))
-figures_folder <- file.path(doc_folder, "figures")
-annotation_folder <- file.path(doc_folder, "annotation")
 
 
 # Write documentation
