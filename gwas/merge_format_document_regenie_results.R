@@ -549,6 +549,22 @@ if (F) {
   
 }
 
+
+# GWAS parameters
+
+split <- strsplit(regenie_output_path, "/")[[1]]
+split <- strsplit(split[length(split)], "_pop_")[[1]]
+split <- strsplit(split[2], "_pheno_")[[1]]
+
+population <- split[1]
+
+split <- strsplit(split[2], "_chr_")[[1]]
+
+pheno <- split[1]
+
+print(paste0(Sys.time(), " - Merging, formatting, and documenting GWAS results for ", analysis_name))
+
+
 # Housekeeping
 
 doc_folder <- file.path(docs_folder, analysis_name)
@@ -580,21 +596,6 @@ if (!dir.exists(annotation_folder)) {
   dir.create(annotation_folder, recursive = T)
   
 }
-
-
-# GWAS parameters
-
-split <- strsplit(regenie_output_path, "/")[[1]]
-split <- strsplit(split[length(split)], "_pop_")[[1]]
-split <- strsplit(split[2], "_pheno_")[[1]]
-
-population <- split[1]
-
-split <- strsplit(split[2], "_chr_")[[1]]
-
-pheno <- split[1]
-
-print(paste0(Sys.time(), " - Merging, formatting, and documenting GWAS results for ", analysis_name))
 
 # Plotting parameters
 
