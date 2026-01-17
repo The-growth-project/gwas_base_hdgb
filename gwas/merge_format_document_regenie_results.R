@@ -532,8 +532,8 @@ regenie_output_path <- args[1]
 results_folder <- args[2]
 docs_folder <- args[3]
 analysis_name <- args[4]
-p_value_threshold <- args[5]
-bp_limit <- args[6]
+p_value_threshold <- as.numeric(args[5])
+bp_limit <- as.numeric(args[6])
 
 
 # DEBUG test data
