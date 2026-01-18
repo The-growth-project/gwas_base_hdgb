@@ -865,14 +865,14 @@ if (nrow(annotation_df_common) > 0) {
       maxDistance = bp_limit / 2
     )
     
-    if (geneLabel != "No gene found") {
+    if (gene_name != "No gene found") {
       
-      geneLabel <- glue("[{geneLabel}]({basename(ensembl_folder)}/{cleanRsId(snp)}.md)")
+      gene_name <- glue("[{gene_name}]({basename(ensembl_folder)}/{cleanRsId(snp)}.md)")
       
     }
     
     write(
-      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " | ", geneLabel, " |"),
+      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " | ", gene_name, " |"),
       file = md_file, 
       append = T
     )
@@ -921,14 +921,14 @@ if (nrow(annotation_df_rare) > 0) {
       maxDistance = bp_limit / 2
     )
     
-    if (geneLabel != "No gene found") {
+    if (gene_name != "No gene found") {
       
-      geneLabel <- glue("[{geneLabel}]({basename(ensembl_folder)}/{cleanRsId(snp)}.md)")
+      gene_name <- glue("[{gene_name}]({basename(ensembl_folder)}/{cleanRsId(snp)}.md)")
       
     }
     
     write(
-      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " | ", geneLabel, " |"),
+      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " | ", gene_name, " |"),
       file = md_file, 
       append = T
     )
@@ -982,14 +982,14 @@ if (nrow(annotation_df_hla) > 0) {
       maxDistance = bp_limit / 2
     )
     
-    if (geneLabel != "No gene found") {
+    if (gene_name != "No gene found") {
       
-      geneLabel <- glue("[{geneLabel}]({basename(ensembl_folder)}/{cleanRsId(snp)}.md)")
+      gene_name <- glue("[{gene_name}]({basename(ensembl_folder)}/{cleanRsId(snp)}.md)")
       
     }
     
     write(
-      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " | ", geneLabel, " |"),
+      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " | ", gene_name, " |"),
       file = md_file, 
       append = T
     )
