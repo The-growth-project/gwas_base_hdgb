@@ -112,7 +112,7 @@ get_nearest_gene_docs <- function(
   
   write(x = "\n", file = ensemblFile, append = T)
 
-  nearest_gene_name <- nearest_genes$gene_name[nearest_genes$nearest_gene]
+  nearest_gene_name <- paste(nearest_genes$gene_name[nearest_genes$nearest_gene], sep = ",")
   
   return(nearest_gene_name)
   
