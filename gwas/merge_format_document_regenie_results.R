@@ -861,7 +861,7 @@ if (nrow(annotation_df_common) > 0) {
       variantId = snp,
       chromosome = chr,
       bp = bp,
-      ensemblFolder = ,
+      ensemblFolder = ensembl_folder,
       maxDistance = bp_limit / 2
     )
     
