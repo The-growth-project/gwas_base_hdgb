@@ -707,7 +707,7 @@ annotation_df_rare <- annotation_df_not_hla %>%
 
 annotation_df_common <- annotation_df_not_hla %>% 
   filter(
-    a1freq >= maf_threshold && a1freq <= (1 - maf_threshold)
+    a1freq >= maf_threshold & a1freq <= (1 - maf_threshold)
   )
 
 if (sum(annotation_df_common$log10p >= -log10(5e-8)) > 10) {
@@ -917,7 +917,7 @@ if (nrow(annotation_df_rare) > 0) {
       variantId = snp,
       chromosome = chr,
       bp = bp,
-      ensemblFolder = ,
+      ensemblFolder = ensembl_folder,
       maxDistance = bp_limit / 2
     )
     
@@ -978,7 +978,7 @@ if (nrow(annotation_df_hla) > 0) {
       variantId = snp,
       chromosome = chr,
       bp = bp,
-      ensemblFolder = ,
+      ensemblFolder = ensembl_folder,
       maxDistance = bp_limit / 2
     )
     
