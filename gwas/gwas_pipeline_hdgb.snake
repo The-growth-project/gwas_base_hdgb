@@ -101,7 +101,7 @@ chromosomes = [str(i) for i in range(1, 23)]
 chromosomes.append('X')
 
 # Clumping and plotting preferences
-p_value_threshold = 1e-6
+p_value_threshold = 5e-8
 bp_limit = 500000
 
 # Create an output folder for every analysis
