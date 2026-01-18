@@ -101,7 +101,6 @@ chromosomes = [str(i) for i in range(1, 23)]
 chromosomes.append('X')
 
 # Clumping and plotting preferences
-p_value_threshold = 1e-6
 bp_limit = 500000
 
 # Create an output folder for every analysis
@@ -354,7 +353,6 @@ rule merge_format_document:
         regenie_output_path = os.path.join(regenie_step2_folder, '{analysis}', 'step2_pop_{population}_pheno_{phenotype}_chr_chromosome_.regenie.gz'),
         output_folder = os.path.join(results_folder, '{analysis}'),
         docs_folder = docs_folder,
-        p_value_threshold = p_value_threshold,
         bp_limit = bp_limit
     output:
         gwas_output = os.path.join(results_folder, '{analysis}', 'pop_{population}_pheno_{phenotype}.regenie.gz'),
@@ -365,7 +363,7 @@ rule merge_format_document:
     threads: 4
     shell:
         """
-        Rscript gwas/merge_format_document_regenie_results.R {params.regenie_output_path} {params.output_folder} {params.docs_folder} {wildcards.analysis} {params.p_value_threshold} {params.bp_limit}
+        Rscript gwas/merge_format_document_regenie_results.R {params.regenie_output_path} {params.output_folder} {params.docs_folder} {wildcards.analysis} {params.bp_limit}
         """
         
         

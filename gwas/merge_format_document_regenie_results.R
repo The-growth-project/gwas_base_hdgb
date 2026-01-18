@@ -10,10 +10,12 @@
 #' Returns a data frame with the to hits.
 #' 
 #' @param association_df the association data frame with results from regenie
+#' @param p_value_threshold the p-value threshold to use
 #' 
 #' @return a data frame containing the association results for the top hits
 get_top_hits <- function(
-    association_df
+    association_df,
+    p_value_threshold
 ) {
 
   temp_df <- association_df %>% 
@@ -174,7 +176,7 @@ get_mh <- function(
       linewidth = 0.3
     )
   
-  if (!is.null(annotation_df) && nrow(annotation_df) > 0 && length(unique(annotation_df$snp)) < 20) {
+  if (!is.null(annotation_df) && nrow(annotation_df) > 0 && length(unique(annotation_df$id)) < 20) {
     
     max_y <- max_y + 2
     
@@ -532,8 +534,7 @@ regenie_output_path <- args[1]
 results_folder <- args[2]
 docs_folder <- args[3]
 analysis_name <- args[4]
-p_value_threshold <- as.numeric(args[5])
-bp_limit <- as.numeric(args[6])
+bp_limit <- as.numeric(args[5])
 
 
 # DEBUG test data
@@ -544,7 +545,6 @@ if (F) {
   results_folder <- "2025.12.17/weight_retention/results/bmi_beginning"
   docs_folder <- "gwas/docs/2025.12.17"
   analysis_name <- "debug_mh"
-  p_value_threshold <- 5e-8
   bp_limit <- 500000
   
 }
@@ -572,6 +572,7 @@ doc_folder <- file.path(docs_folder, analysis_name)
 md_file <- file.path(doc_folder, glue("pop_{population}_pheno_{pheno}.md"))
 figures_folder <- file.path(doc_folder, "figures")
 annotation_folder <- file.path(doc_folder, "annotation")
+ensembl_folder <- file.path(doc_folder, "ensembl")
 
 if (!dir.exists(results_folder)) {
   
@@ -594,6 +595,12 @@ if (!dir.exists(figures_folder)) {
 if (!dir.exists(annotation_folder)) {
   
   dir.create(annotation_folder, recursive = T)
+  
+}
+
+if (!dir.exists(ensembl_folder)) {
+  
+  dir.create(ensembl_folder, recursive = T)
   
 }
 
@@ -643,7 +650,7 @@ for (chromosome in chromosomes) {
     )
   
   association_df[[length(association_df) + 1]] <- regenie_output
-  annotation_df[[length(annotation_df) + 1]] <- get_top_hits(regenie_output)
+  annotation_df[[length(annotation_df) + 1]] <- get_top_hits(regenie_output, 1e-6)
   
   }
 }
@@ -677,6 +684,60 @@ write.table(
   sep = "\t"
 )
 
+# Select cut-offs for display
+
+annotation_df_hla <- annotation_df %>% 
+  filter(
+    chrom == 6 & genpos > 27000000 & genpos < 34000000
+  )
+
+annotation_df_not_hla <- annotation_df %>% 
+  filter(
+    chrom != 6 | genpos <= 27000000 | genpos >= 34000000
+  )
+
+maf_threshold <- 0.01
+
+annotation_df_rare <- annotation_df_not_hla %>% 
+  filter(
+    a1freq < maf_threshold | a1freq > (1 - maf_threshold)
+  )
+
+annotation_df_common <- annotation_df_not_hla %>% 
+  filter(
+    a1freq >= maf_threshold && a1freq <= (1 - maf_threshold)
+  )
+
+if (sum(annotation_df_common$log10p >= -log10(5e-8)) > 10) {
+  
+  p_value_threshold <- 5e-8
+  mh_annotation_df <- annotation_df_common %>% 
+    filter(
+      log10p >= -log10(5e-8)
+    )
+  
+} else if (sum(annotation_df_common$log10p > -log10(1e-6)) > 10) {
+  
+  p_value_threshold <- 1e-6
+  mh_annotation_df <- annotation_df_common
+  
+} else if (sum(annotation_df_rare$log10p > -log10(5e-8)) > 10) {
+  
+  p_value_threshold <- 5e-8
+  maf_threshold <- NA
+  mh_annotation_df <- annotation_df_not_hla %>% 
+    filter(
+      log10p >= -log10(5e-8)
+    )
+  
+} else {
+  
+  p_value_threshold <- 1e-6
+  maf_threshold <- NA
+  mh_annotation_df <- annotation_df_not_hla
+  
+}
+
 
 # Write documentation
 
@@ -691,6 +752,35 @@ write(
   file = md_file,
   append = T
 )
+
+if (!is.na(maf_threshold) || nrow(annotation_df_hla) > 0) {
+  
+  write(
+    x = glue("Note:\n"),
+    file = md_file,
+    append = T
+  )
+  
+}
+
+if (!is.na(maf_threshold)) {
+  
+  write(
+    x = glue("- Markers with a maf < {maf_threshold} are not annotated on the Manhattan plot.\n"),
+    file = md_file,
+    append = T
+  )
+  
+}
+if (nrow(annotation_df_hla) > 0) {
+  
+  write(
+    x = glue("- Markers in the HLA region are not annotated on the Manhattan plot.\n"),
+    file = md_file,
+    append = T
+  )
+  
+}
 
 if (nrow(regenie_output) == 0) {
   
@@ -721,7 +811,7 @@ write(
 
 mh_plot <- get_mh(
   association_df = association_df,
-  annotation_df = annotation_df
+  annotation_df = mh_annotation_df
 )
 
 png(
@@ -732,61 +822,55 @@ png(
 grid.draw(mh_plot)
 dummy <- dev.off()
 
-annotation_df_hla <- annotation_df %>% 
-  filter(
-    chrom == 6 & genpos > 27000000 & genpos < 34000000
-  )
-
-annotation_df_not_hla <- annotation_df %>% 
-  filter(
-    chrom != 6 | genpos <= 27000000 | genpos >= 34000000
-  )
 
 write(
-  x = glue("### Top hits"),
+  x = glue("### Top hits common"),
   file = md_file,
   append = T
 )
 
-if (nrow(annotation_df_hla) > 0) {
-  
-  write(
-    x = "> Note: HLA region not included (chr 6, 27-34 Mb)\n", 
-    file = md_file, 
-    append = T
-  )
-  
-}
-
-
 write(
-  x = paste0("| SNP | chr | bp | allele 0 | allele 1 | allele 1 freq | beta | se | log10p | n |"),
+  x = paste0("| SNP | chr | bp | allele 0 | allele 1 | allele 1 freq | beta | se | log10p | n | gene |"),
   file = md_file, 
   append = T
 )
 write(
-  x = paste0("| --- | --- | -- | -------- | -------- | ------------- | ---- | -- | ------ | - |"),
+  x = paste0("| --- | --- | -- | -------- | -------- | ------------- | ---- | -- | ------ | - | ---- |"),
   file = md_file, 
   append = T
 )
 
-if (nrow(annotation_df_not_hla) > 0) {
+if (nrow(annotation_df_common) > 0) {
   
-  for (i in 1:nrow(annotation_df_not_hla)) {
+  for (i in 1:nrow(annotation_df_common)) {
     
-    snp <- annotation_df_not_hla$id[i]
-    chr <- annotation_df_not_hla$chrom[i]
-    bp <- annotation_df_not_hla$genpos[i]
-    allele0 <- annotation_df_not_hla$allele0[i]
-    allele1 <- annotation_df_not_hla$allele1[i]
-    allele1_freq <- annotation_df_not_hla$a1freq[i]
-    beta <- annotation_df_not_hla$beta[i]
-    se <- annotation_df_not_hla$se[i]
-    p <- annotation_df_not_hla$log10p[i]
-    n <- annotation_df_not_hla$n[i]
+    snp <- annotation_df_common$id[i]
+    chr <- annotation_df_common$chrom[i]
+    bp <- annotation_df_common$genpos[i]
+    allele0 <- annotation_df_common$allele0[i]
+    allele1 <- annotation_df_common$allele1[i]
+    allele1_freq <- annotation_df_common$a1freq[i]
+    beta <- annotation_df_common$beta[i]
+    se <- annotation_df_common$se[i]
+    p <- annotation_df_common$log10p[i]
+    n <- annotation_df_common$n[i]
+    
+    gene_name <- get_nearest_gene_docs(
+      variantId = snp,
+      chromosome = chr,
+      bp = bp,
+      ensemblFolder = ,
+      maxDistance = bp_limit / 2
+    )
+    
+    if (geneLabel != "No gene found") {
+      
+      geneLabel <- glue("[{geneLabel}]({basename(ensembl_folder)}/{cleanRsId(snp)}.md)")
+      
+    }
     
     write(
-      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " |"),
+      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " | ", geneLabel, " |"),
       file = md_file, 
       append = T
     )
@@ -794,25 +878,86 @@ if (nrow(annotation_df_not_hla) > 0) {
   }
 }
 
+
+write(
+  x = glue("### Top hits rare"),
+  file = md_file,
+  append = T
+)
+
+write(
+  x = paste0("| SNP | chr | bp | allele 0 | allele 1 | allele 1 freq | beta | se | log10p | n | gene |"),
+  file = md_file, 
+  append = T
+)
+write(
+  x = paste0("| --- | --- | -- | -------- | -------- | ------------- | ---- | -- | ------ | - | ---- |"),
+  file = md_file, 
+  append = T
+)
+
+if (nrow(annotation_df_rare) > 0) {
+  
+  for (i in 1:nrow(annotation_df_rare)) {
+    
+    snp <- annotation_df_rare$id[i]
+    chr <- annotation_df_rare$chrom[i]
+    bp <- annotation_df_rare$genpos[i]
+    allele0 <- annotation_df_rare$allele0[i]
+    allele1 <- annotation_df_rare$allele1[i]
+    allele1_freq <- annotation_df_rare$a1freq[i]
+    beta <- annotation_df_rare$beta[i]
+    se <- annotation_df_rare$se[i]
+    p <- annotation_df_rare$log10p[i]
+    n <- annotation_df_rare$n[i]
+    
+    gene_name <- get_nearest_gene_docs(
+      variantId = snp,
+      chromosome = chr,
+      bp = bp,
+      ensemblFolder = ,
+      maxDistance = bp_limit / 2
+    )
+    
+    if (geneLabel != "No gene found") {
+      
+      geneLabel <- glue("[{geneLabel}]({basename(ensembl_folder)}/{cleanRsId(snp)}.md)")
+      
+    }
+    
+    write(
+      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " | ", geneLabel, " |"),
+      file = md_file, 
+      append = T
+    )
+    
+  }
+}
+
+
+write(
+  x = glue("### HLA top hits"),
+  file = md_file,
+  append = T
+)
+write(
+  x = "HLA region: chr 6, 27-34 Mb\n", 
+  file = md_file, 
+  append = T
+)
+
+write(
+  x = paste0("| SNP | chr | bp | allele 0 | allele 1 | allele 1 freq | beta | se | p | n | gene |"),
+  file = md_file, 
+  append = T
+)
+write(
+  x = paste0("| --- | --- | -- | -------- | -------- | ------------- | ---- | -- | - | - | ---- |"),
+  file = md_file, 
+  append = T
+)
+
 if (nrow(annotation_df_hla) > 0) {
-  
-  write(
-    x = glue("### HLA top hits"),
-    file = md_file,
-    append = T
-  )
-  
-  write(
-    x = paste0("| SNP | chr | bp | allele 0 | allele 1 | allele 1 freq | beta | se | p | n |"),
-    file = md_file, 
-    append = T
-  )
-  write(
-    x = paste0("| --- | --- | -- | -------- | -------- | ------------- | ---- | -- | - | - |"),
-    file = md_file, 
-    append = T
-  )
-  
   
   for (i in 1:nrow(annotation_df_hla)) {
     
@@ -827,14 +972,29 @@ if (nrow(annotation_df_hla) > 0) {
     p <- annotation_df_hla$log10p[i]
     n <- annotation_df_hla$n[i]
     
+    gene_name <- get_nearest_gene_docs(
+      variantId = snp,
+      chromosome = chr,
+      bp = bp,
+      ensemblFolder = ,
+      maxDistance = bp_limit / 2
+    )
+    
+    if (geneLabel != "No gene found") {
+      
+      geneLabel <- glue("[{geneLabel}]({basename(ensembl_folder)}/{cleanRsId(snp)}.md)")
+      
+    }
+    
     write(
-      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " |"),
+      x = paste0("| ", snp, " | ", chr, " | ", bp, " | ", allele0, " | ", allele1, " | ", allele1_freq, " | ", beta, " | ", se, " | ", p, " | ", n, " | ", geneLabel, " |"),
       file = md_file, 
       append = T
     )
     
   }
 }
+
 
 write(
   x = glue("### Quality Control"),
