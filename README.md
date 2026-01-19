@@ -21,7 +21,8 @@ The pipeline should be used with phenotypes with version posterior to `25-12-12`
 
 ## Example
 The repository contains results from an example on birth weight.
-- [phenotypes.qmd](phenotypes/phenotypes.qmd): contains the phenotypes handling of the birth weight analysis.
+
+GWAS results:
 - [children](gwas/docs/2026.01.06/birth_weight/pop_children_pheno_weight_birth.md): GWAS against the genotypes of the children.
 - [mothers](gwas/docs/2026.01.06/birth_weight/pop_mothers_pheno_weight_birth.md): GWAS against the genotypes of the mothers.
 - [fathers](gwas/docs/2026.01.06/birth_weight/pop_fathers_pheno_weight_birth.md): GWAS against the genotypes of the fathers.
