@@ -17,6 +17,18 @@ The pipeline should be used with phenotypes with version posterior to `25-12-12`
 ## Known issues
 - The pruning of hits currently does not take LD into account, this will be implemented at a later stage.
 - Regenie is used only one phenotype at a time to allow using different sets of covariates for each phenotype. Grouping phenotypes would allow speed improvements but requires structural changes to the pipeline.
-- Top hits are currently not annotated.
+- GWAS catalog results are currently not available.
+
+## Example
+The repository contains results from an example on birth weight.
+
+Phenotypes handling:
+- [phenotypes.md](phenotypes/phenotypes.md): Phenotypes processing and documentation.
+
+GWAS results:
+- [children](gwas/docs/2026.01.06/birth_weight/pop_children_pheno_weight_birth.md): GWAS against the genotypes of the children.
+- [mothers](gwas/docs/2026.01.06/birth_weight/pop_mothers_pheno_weight_birth.md): GWAS against the genotypes of the mothers.
+- [fathers](gwas/docs/2026.01.06/birth_weight/pop_fathers_pheno_weight_birth.md): GWAS against the genotypes of the fathers.
+- [parents](gwas/docs/2026.01.06/birth_weight/pop_parents_pheno_weight_birth.md): GWAS against the genotypes of the parents.
 
 
