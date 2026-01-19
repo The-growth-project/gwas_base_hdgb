@@ -513,6 +513,7 @@ source("gwas/utils/annotation_utils.R")
 
 library(conflicted)
 library(janitor)
+library(yaml)
 library(stringr)
 library(glue)
 library(dplyr)
@@ -554,7 +555,16 @@ if (F) {
 
 # GWAS parameters
 
+gwas_settings <- read_yaml("gwas/analysis.yaml")
+
 split <- strsplit(regenie_output_path, "/")[[1]]
+
+analysis_id <- split[length(split)-1]
+
+covariates <- gwas_settings$analyses[[analysis_id]]$covariates
+pheno_name <- gwas_settings$analyses[[analysis_id]]$phenotype_name
+pheno_type <- gwas_settings$analyses[[analysis_id]]$phenotype_type
+
 split <- strsplit(split[length(split)], "_pop_")[[1]]
 split <- strsplit(split[2], "_pheno_")[[1]]
 
@@ -742,15 +752,42 @@ if (sum(annotation_df_common$log10p >= -log10(5e-8)) > 10) {
 
 
 # Write documentation
+covariates <- gwas_settings$analyses[[analysis_id]]$covariates
+pheno_name <- gwas_settings$analyses[[analysis_id]]$phenotype_name
+pheno_type <- gwas_settings$analyses[[analysis_id]]$phenotype_type
 
 write(
-  x = glue("## {pheno} in {population}"),
+  x = glue("## {pheno_name} in {population}"),
   file = md_file,
   append = F
 )
 
 write(
-  x = glue("Association results by regenie for {pheno} in {population}, followed by simple pruning of the hits passing p < {p_value_threshold}.\n"),
+  x = glue("Association results by regenie for {pheno_name} ({pheno}, {pheno_type}) in {population}"),
+  file = md_file,
+  append = T
+)
+
+if (length(covariates) > 0) {
+  
+  write(
+    x = glue(" using the following covariates: {paste(covariates, collapse = ', ')}, and genotyping batch"),
+    file = md_file,
+    append = T
+  )
+  
+} else {
+  
+  write(
+    x = glue(" using genotyping batches as covariates"),
+    file = md_file,
+    append = T
+  )
+  
+}
+
+write(
+  x = glue(". Simple bp-window pruning of the hits passing p < {p_value_threshold}.\n\n"),
   file = md_file,
   append = T
 )
@@ -1087,3 +1124,471 @@ png(
 grid.draw(se_af_plot)
 dummy <- dev.off()
 
+
+
+# Pheno code not included yet
+
+if (F) {
+  
+  get_pheno_file <- function(population) {
+    
+    if (population == "children") {
+      
+      return(file.path(pheno_folder, "pheno_child"))
+      
+    } else if (population == "mothers") {
+      
+      return(file.path(pheno_folder, "pheno_mother"))
+      
+    } else if (population == "fathers") {
+      
+      return(file.path(pheno_folder, "pheno_father"))
+      
+    } else if (population == "parents") {
+      
+      return(file.path(pheno_folder, "pheno_parent"))
+      
+    } else {
+      
+      stop(glue("Link to phenotype file not implemented for population {population}."))
+      
+    }
+    
+  }
+  
+  # Get phenotype summary statistics
+  
+  for (population in analysis$populations) {
+    
+    write(
+      x = glue("### {population}\n\n"),
+      file = analysis_md,
+      append = T
+    )
+    
+    write(
+      x = glue("#### Phenotypes\n"),
+      file = analysis_md,
+      append = T
+    )
+    
+    pheno_values <- read.table(
+      file = get_pheno_file(population),
+      header = T,
+      sep = " "
+    )
+    
+    non_missing_values <- as.numeric(pheno_values[[analysis$phenotype]][!is.na(pheno_values[[analysis$phenotype]])])
+    
+    n_values <- length(unique(non_missing_values))
+    
+    if (n_values <= 20) {
+      
+      write(
+        x = glue("| Value | N |\n"),
+        file = analysis_md,
+        append = T
+      )
+      write(
+        x = glue("| ----- | - |\n"),
+        file = analysis_md,
+        append = T
+      )
+      
+      for (value in sort(unique(non_missing_values))) {
+        
+        n <- sum(non_missing_values == value)
+        write(
+          x = glue("| {value} | {n} |\n"),
+          file = analysis_md,
+          append = T
+        )
+        
+      }
+      
+      write(
+        x = glue("| Total | {length(non_missing_values)} |\n\n"),
+        file = analysis_md,
+        append = T
+      )
+      
+      for (covariate in analysis$covariates) {
+        
+        n_covariates <- length(unique(pheno_values[[covariate]][!is.na(pheno_values[[covariate]])]))
+        
+        if (n_covariates <= 20) {
+          
+          plot_data <- data.frame(
+            covariate = factor(pheno_values[[covariate]]),
+            phenotype = factor(pheno_values[[analysis$phenotype]])
+          ) %>% 
+            filter(
+              !is.na(covariate) & !is.na(phenotype)
+            )
+          
+          plot <- ggplot(
+            data = plot_data
+          ) +
+            geom_bar(
+              mapping = aes(
+                x = phenotype,
+                fill = covariate
+              ),
+              alpha = 0.8,
+              position = "dodge"
+            ) +
+            scale_x_discrete(
+              name = analysis$phenotype_name
+            ) +
+            scale_fill_manual(
+              values = scico(
+                n = n_values,
+                palette = "batlowK",
+                begin = 0.2,
+                end = 0.8
+              )
+            ) +
+            facet_grid(
+              covariate ~ .
+            ) +
+            theme(
+              legend.position = "none",
+              panel.border = element_blank(),
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor.x = element_blank(),
+              panel.grid.minor.y = element_blank(),
+              axis.line = element_line()
+            )
+          
+          png(
+            filename = file.path(plots_folder, glue("{population}_{covariate}.png")),
+            width = 900,
+            height = 600
+          )
+          grid.draw(plot)
+          device <- dev.off()
+          
+          write(
+            x = glue("![]({analysis_id}_plots/{population}_{covariate}.png)"),
+            file = analysis_md,
+            append = T
+          )
+          
+        } else {
+          
+          plot_data <- data.frame(
+            covariate = pheno_values[[covariate]],
+            phenotype = factor(pheno_values[[analysis$phenotype]])
+          ) %>% 
+            filter(
+              !is.na(covariate) & !is.na(phenotype)
+            )
+          
+          plot <- ggplot(
+            data = plot_data
+          ) +
+            geom_violin(
+              mapping = aes(
+                x = phenotype,
+                y = covariate,
+                fill = phenotype
+              ),
+              alpha = 0.5
+            ) +
+            geom_boxplot(
+              mapping = aes(
+                x = phenotype,
+                y = covariate,
+                fill = phenotype
+              ),
+              width = 0.3,
+              outlier.shape = NA,
+              alpha = 0.5
+            ) +
+            geom_xsidehistogram(
+              mapping = aes(
+                x = phenotype,
+                fill = phenotype
+              ),
+              alpha = 0.5,
+              stat = "count"
+            ) +
+            geom_ysidedensity(
+              mapping = aes(
+                y = covariate,
+                fill = phenotype
+              ),
+              alpha = 0.5
+            ) +
+            scale_x_discrete(
+              name = analysis$phenotype_name
+            ) +
+            scale_y_continuous(
+              name = covariate
+            ) +
+            scale_fill_manual(
+              values = scico(
+                n = n_values,
+                palette = "batlowK",
+                begin = 0.2,
+                end = 0.8
+              )
+            ) +
+            theme(
+              ggside.panel.scale = 0.15,
+              ggside.panel.grid.minor.y = element_blank(),
+              ggside.axis.ticks.x = element_blank(),
+              ggside.axis.text.x = element_blank(),
+              ggside.panel.background = element_blank(),
+              legend.position = "none",
+              panel.border = element_blank(),
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor.x = element_blank(),
+              axis.line = element_line(),
+              ggside.axis.line = element_line()
+            )
+          
+          png(
+            filename = file.path(plots_folder, glue("{population}_{covariate}.png")),
+            width = 900,
+            height = 600
+          )
+          grid.draw(plot)
+          device <- dev.off()
+          
+          write(
+            x = glue("![]({analysis_id}_plots/{population}_{covariate}.png)"),
+            file = analysis_md,
+            append = T
+          )
+          
+        }
+      }
+      
+    } else {
+      
+      quantiles <- quantile(
+        x = non_missing_values,
+        probs = c(0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99)
+      )
+      
+      write(
+        x = glue("| Quantile | Value |\n"),
+        file = analysis_md,
+        append = T
+      )
+      write(
+        x = glue("| -------- | ----- |\n"),
+        file = analysis_md,
+        append = T
+      )
+      
+      for (quantile_i in 1:length(quantiles)) {
+        
+        write(
+          x = glue("| {names(quantiles[quantile_i])} | {unname(quantiles[quantile_i])} |\n"),
+          file = analysis_md,
+          append = T
+        )
+        
+      }
+      
+      write(
+        x = glue("| N | {length(non_missing_values)} |\n\n"),
+        file = analysis_md,
+        append = T
+      )
+      
+      for (covariate in analysis$covariates) {
+        
+        n_covariates <- length(unique(pheno_values[[covariate]][!is.na(pheno_values[[covariate]])]))
+        
+        if (n_covariates <= 20) {
+          
+          plot_data <- data.frame(
+            covariate = factor(pheno_values[[covariate]]),
+            phenotype = pheno_values[[analysis$phenotype]]
+          ) %>% 
+            filter(
+              !is.na(covariate) & !is.na(phenotype)
+            )
+          
+          plot <- ggplot(
+            data = plot_data
+          ) +
+            geom_violin(
+              mapping = aes(
+                x = covariate,
+                y = phenotype,
+                fill = covariate
+              ),
+              alpha = 0.5
+            ) +
+            geom_boxplot(
+              mapping = aes(
+                x = covariate,
+                y = phenotype,
+                fill = covariate
+              ),
+              width = 0.3,
+              outlier.shape = NA,
+              alpha = 0.5
+            ) +
+            geom_xsidehistogram(
+              mapping = aes(
+                x = covariate,
+                fill = covariate
+              ),
+              alpha = 0.5,
+              stat = "count"
+            ) +
+            geom_ysidedensity(
+              mapping = aes(
+                y = phenotype,
+                fill = covariate
+              ),
+              alpha = 0.5
+            ) +
+            scale_x_discrete(
+              name = covariate
+            ) +
+            scale_y_continuous(
+              name = analysis$phenotype_name
+            ) +
+            scale_fill_manual(
+              values = scico(
+                n = n_covariates,
+                palette = "batlowK",
+                begin = 0.2,
+                end = 0.8
+              )
+            ) +
+            theme(
+              ggside.panel.scale = 0.15,
+              ggside.panel.grid.minor.y = element_blank(),
+              ggside.axis.ticks.x = element_blank(),
+              ggside.axis.text.x = element_blank(),
+              ggside.panel.background = element_blank(),
+              legend.position = "none",
+              panel.border = element_blank(),
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor.x = element_blank(),
+              axis.line = element_line(),
+              ggside.axis.line = element_line()
+            )
+          
+          png(
+            filename = file.path(plots_folder, glue("{population}_{covariate}.png")),
+            width = 900,
+            height = 600
+          )
+          grid.draw(plot)
+          device <- dev.off()
+          
+          write(
+            x = glue("![]({analysis_id}_plots/{population}_{covariate}.png)"),
+            file = analysis_md,
+            append = T
+          )
+          
+        } else {
+          
+          plot_data <- data.frame(
+            covariate = pheno_values[[covariate]],
+            phenotype = pheno_values[[analysis$phenotype]]
+          ) %>% 
+            filter(
+              !is.na(covariate) & !is.na(phenotype)
+            )
+          
+          plot <- ggplot(
+            data = plot_data
+          ) +
+            geom_point(
+              mapping = aes(
+                x = covariate,
+                y = phenotype
+              ),
+              alpha = 0.2
+            ) +
+            geom_density2d(
+              mapping = aes(
+                x = covariate,
+                y = phenotype
+              ),
+              col = "white"
+            ) +
+            geom_xsidedensity(
+              mapping = aes(
+                x = phenotype
+              ),
+              alpha = 0.5,
+              fill = "grey80"
+            ) +
+            geom_ysidedensity(
+              mapping = aes(
+                y = phenotype
+              ),
+              alpha = 0.5,
+              fill = "grey80"
+            ) +
+            scale_x_continuous(
+              name = covariate
+            ) +
+            scale_y_continuous(
+              name = analysis$phenotype_name
+            ) +
+            theme(
+              ggside.panel.scale = 0.15,
+              ggside.panel.grid.minor.y = element_blank(),
+              ggside.panel.grid.major.y = element_blank(),
+              ggside.axis.ticks = element_blank(),
+              ggside.axis.text = element_blank(),
+              ggside.panel.background = element_blank(),
+              legend.position = "none",
+              panel.border = element_blank(),
+              panel.grid.major.x = element_blank(),
+              panel.grid.minor.x = element_blank(),
+              axis.line = element_line(),
+              ggside.axis.line = element_blank()
+            )
+          
+          png(
+            filename = file.path(plots_folder, glue("{population}_{covariate}.png")),
+            width = 900,
+            height = 600
+          )
+          grid.draw(plot)
+          device <- dev.off()
+          
+          write(
+            x = glue("![]({analysis_id}_plots/{population}_{covariate}.png)"),
+            file = analysis_md,
+            append = T
+          )
+          
+        }
+      }
+    }
+    
+    write(
+      x = glue("#### Association results\n"),
+      file = analysis_md,
+      append = T
+    )
+    
+    write(
+      x = glue("![]({analysis_id}/figures/pop_{population}_pheno_{analysis$phenotype}_mh.png)\n"),
+      file = analysis_md,
+      append = T
+    )
+    
+    write(
+      x = glue("- [Association results]({analysis_id}/pop_{population}_pheno_{analysis$phenotype}.md)\n"),
+      file = analysis_md,
+      append = T
+    )
+    
+  }
+  
+}

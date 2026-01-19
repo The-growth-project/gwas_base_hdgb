@@ -189,14 +189,24 @@ def get_association_results():
     return output_files
 
 def get_lead_snps_outputs():
-    outs = []
+    output_files = []
     for analysis in analyses_names:
         phenotype = analyses[analysis]["phenotype"]
         for population in analyses[analysis]["populations"]:
-            outs.append(
+            output_files.append(
                 os.path.join(results_folder, analysis, f"pop_{population}_pheno_{phenotype}.top_hits.gz")
             )
-    return outs
+    return output_files
+    
+def get_gwas_md_files():
+    output_files = list()
+    for analysis in analyses_names:
+        phenotype = analyses[analysis]["phenotype"]
+        for population in analyses[analysis]["populations"]:
+            output_files.append(
+                os.path.join(docs_folder, analysis, f"pop_{population}_pheno_{phenotype}.md")
+            )
+    return output_files
 
 
 ############################## RULES ###########################################
@@ -215,7 +225,9 @@ rule all:
         regenie_output = get_regenie_all_output(),
         # The association results
         gwas_output = get_association_results(),
-        tophits_output = get_lead_snps_outputs()
+        tophits_output = get_lead_snps_outputs(),
+        # The documentation
+        readme_file = os.path.join(docs_folder, "readme.md")
 
 rule pheno_file:
     'Prepares a phenotype file for regenie.'
@@ -364,6 +376,19 @@ rule merge_format_document:
     shell:
         """
         Rscript gwas/merge_format_document_regenie_results.R {params.regenie_output_path} {params.output_folder} {params.docs_folder} {wildcards.analysis} {params.bp_limit}
+        """
+
+rule write_md:
+    'Writes the md for the different analyses'
+    input:
+        gwas_md_files = get_gwas_md_files()
+    output:
+        readme_file = os.path.join(docs_folder, "readme.md")
+    conda:
+        "envs/r_gwas.yaml"
+    shell:
+        """
+        Rscript gwas/write_readme.R
         """
         
         

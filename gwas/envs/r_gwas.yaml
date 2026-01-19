@@ -19,3 +19,4 @@ dependencies:
   - r-httr = 1.4.6
   - r-rjson = 0.2.21
   - r-here = 1.0.1
+  - r-yaml
