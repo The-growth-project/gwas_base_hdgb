@@ -98,15 +98,17 @@ get_nearest_gene_docs <- function(
     
     if (nearest_genes$nearest_gene[i]) {
       
-      gene_decoration <- "*_"
+      gene_prefix <- "**_"
+      gene_suffix <- "**_"
       
     } else {
       
-      gene_decoration <- "_"
+      gene_prefix <- "_"
+      gene_suffix <- "_"
       
     }
     
-    write(x = paste0("| ", nearest_genes$chr[i], " | ", nearest_genes$start[i], " | ", nearest_genes$end[i], " | ", gene_decoration, nearest_genes$gene_name[i], gene_decoration, " | ", nearest_genes$distance[i], " |"), file = ensemblFile, append = T)
+    write(x = paste0("| ", nearest_genes$chr[i], " | ", nearest_genes$start[i], " | ", nearest_genes$end[i], " | ", gene_prefix, nearest_genes$gene_name[i], gene_suffix, " | ", nearest_genes$distance[i], " |"), file = ensemblFile, append = T)
     
   }
   
