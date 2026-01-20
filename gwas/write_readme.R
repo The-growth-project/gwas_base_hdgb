@@ -62,7 +62,7 @@ for (analysis_id in names(gwas_settings$analyses)) {
   
   analysis <- gwas_settings$analyses[[analysis_id]]
   
-  relative_path <- glue("{analysis}/{analysis_id}.md")
+  relative_path <- glue("{gwas_settings$release}/{analysis_id}.md")
   analysis_md <- file.path(output_folder, relative_path)
   
   write(
