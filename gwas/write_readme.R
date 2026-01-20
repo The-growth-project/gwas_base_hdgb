@@ -70,10 +70,10 @@ for (analysis_id in names(gwas_settings$analyses)) {
   
   for (population in analysis$populations) {
     
-    relative_path <- glue("{gwas_settings$release}/pop_{population}_pheno_{analysis$phenotype}.md")
+    relative_path <- glue("{analysis_id}/pop_{population}_pheno_{analysis$phenotype}.md")
     
     write(
-      x = glue("- [{population}]({relative_path}): GWAS of {analysis$phenotype_name} against the genome of {population}.\n\n"),
+      x = glue("- [{population}]({relative_path}): GWAS of {analysis$phenotype_name} against the genome of {population}.\n"),
       file = readme_file,
       append = T
     )
