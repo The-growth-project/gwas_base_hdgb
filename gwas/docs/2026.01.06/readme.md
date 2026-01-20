@@ -2,19 +2,7 @@
 Genome-wide analysis base pipeline for the [Norwegian Mother, Father and Child Cohort Study (MoBa)](https://www.fhi.no/en/ch/studies/moba).
 The documentation corresponds to the analyses version `2026.01.06`.
 ### Analyses
-- [Birth weight test](Birth weight test/birth_weight.md): GWAS of birth weight
-
-- [Birth weight test](GWAS of birth weight/birth_weight.md): GWAS of birth weight
-
-- [Birth weight test](weight_birth/birth_weight.md): GWAS of birth weight
-
-- [Birth weight test](Birth weight/birth_weight.md): GWAS of birth weight
-
-- [Birth weight test](quantitative/birth_weight.md): GWAS of birth weight
-
-- [Birth weight test](c("n_previous_deliveries", "pregnancy_duration")/birth_weight.md): GWAS of birth weight
-
-- [Birth weight test](c("children", "mothers", "fathers", "parents")/birth_weight.md): GWAS of birth weight
+- [Birth weight test](2026.01.06/birth_weight.md): GWAS of birth weight
 
 #### License
 
