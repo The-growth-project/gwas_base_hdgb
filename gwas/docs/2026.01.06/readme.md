@@ -1,8 +1,16 @@
 # Base GWAS
 Genome-wide analysis base pipeline for the [Norwegian Mother, Father and Child Cohort Study (MoBa)](https://www.fhi.no/en/ch/studies/moba).
 The documentation corresponds to the analyses version `2026.01.06`.
-### Analyses
-- [Birth weight test](2026.01.06/birth_weight.md): GWAS of birth weight
+### Birth weight test
+GWAS of birth weight
+
+- [children](2026.01.06/pop_children_pheno_weight_birth.md): GWAS of Birth weight against the genome of children.
+
+- [mothers](2026.01.06/pop_mothers_pheno_weight_birth.md): GWAS of Birth weight against the genome of mothers.
+
+- [fathers](2026.01.06/pop_fathers_pheno_weight_birth.md): GWAS of Birth weight against the genome of fathers.
+
+- [parents](2026.01.06/pop_parents_pheno_weight_birth.md): GWAS of Birth weight against the genome of parents.
 
 #### License
 
