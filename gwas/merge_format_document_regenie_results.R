@@ -863,7 +863,7 @@ dummy <- dev.off()
 
 
 write(
-  x = glue("### Top hits common"),
+  x = glue("### Top hits common (maf ≥ 1%)"),
   file = md_file,
   append = T
 )
@@ -919,7 +919,7 @@ if (nrow(annotation_df_common) > 0) {
 
 
 write(
-  x = glue("### Top hits rare"),
+  x = glue("### Top hits rare (maf < 1%)"),
   file = md_file,
   append = T
 )
