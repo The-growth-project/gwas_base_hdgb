@@ -899,7 +899,7 @@ if (nrow(annotation_df_common) > 0) {
       chromosome = chr,
       bp = bp,
       ensemblFolder = ensembl_folder,
-      maxDistance = bp_limit / 2
+      maxDistance = bp_limit
     )
     
     if (gene_name != "No gene found") {
@@ -955,7 +955,7 @@ if (nrow(annotation_df_rare) > 0) {
       chromosome = chr,
       bp = bp,
       ensemblFolder = ensembl_folder,
-      maxDistance = bp_limit / 2
+      maxDistance = bp_limit
     )
     
     if (gene_name != "No gene found") {
@@ -1016,7 +1016,7 @@ if (nrow(annotation_df_hla) > 0) {
       chromosome = chr,
       bp = bp,
       ensemblFolder = ensembl_folder,
-      maxDistance = bp_limit / 2
+      maxDistance = bp_limit
     )
     
     if (gene_name != "No gene found") {

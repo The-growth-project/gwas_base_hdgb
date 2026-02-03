@@ -276,8 +276,8 @@ rule regenie_step1:
     threads: 6
     shell:
         """
-        bsize=params.block_size
-        bsize_jitter=$(echo "scale=10; (1 + $RANDOM/32767 * 0.2) * $bsize"
+        # bsize=params.block_size
+        # bsize_jitter=$(echo "scale=10; (1 + $RANDOM/32767 * 0.2) * $bsize"
         
         regenie \
         --step 1 \
@@ -292,7 +292,7 @@ rule regenie_step1:
         {params.pheno_covariates} \
         --keep {input.samples_list} \
         --extract {input.variant_list} \
-        --bsize $bsize_jitter \
+        --bsize {params.block_size} \
         {params.pheno_binary} \
         --loocv \
         --out {params.parameters_output}
@@ -318,8 +318,8 @@ rule REGENIE_step2:
     threads: 6
     shell:
         """
-        bsize=params.block_size
-        bsize_jitter=$(echo "scale=10; (1 + $RANDOM/32767 * 0.2) * $bsize"
+        # bsize=params.block_size
+        # bsize_jitter=$(echo "scale=10; (1 + $RANDOM/32767 * 0.2) * $bsize"
         
         regenie \
         --step 2 \
@@ -331,7 +331,7 @@ rule REGENIE_step2:
         --phenoCol {params.pheno_column} \
         --covarFile {input.pheno_file} \
         {params.pheno_covariates} \
-        --bsize $bsize_jitter \
+        --bsize {params.block_size} \
         {params.pheno_binary} \
         --strict \
         --gz \

@@ -55,7 +55,7 @@ get_nearest_gene_docs <- function(
     chromosome,
     bp,
     ensemblFolder,
-    maxDistance = 250000
+    maxDistance = 500000
 ) {
   
   nearest_genes <- genes %>% 
