@@ -564,6 +564,51 @@ for (column_i in 1:length(phenotype_columns)) {
 
 ![](phenotypes_files/figure-commonmark/unnamed-chunk-6-4.png)
 
+### Create phenotypes for population subsets
+
+``` r
+# Stratify by sex
+
+for (column_i in 1:length(phenotype_columns)) {
+  
+  column <- phenotype_columns[column_i]
+  column_name <- phenotype_column_names[column_i]
+ 
+   for (sex_level in levels(phenotype_data$sex)) {
+     
+     sex_name = tolower(sex_level)
+     
+     sub_column <- paste0(column, "_", sex_name)
+     
+     phenotype_data[[sub_column]] <- ifelse(phenotype_data$sex == sex_level, phenotype_data[[column]], NA)
+     
+     print(glue("Number of '{sex_name}' for '{column_name}' GWAS: {sum(!is.na(phenotype_data[[sub_column]]))}"))
+     
+   }
+}
+```
+
+    Number of 'female' for 'Birth weight' GWAS: 35283
+    Number of 'male' for 'Birth weight' GWAS: 35669
+
+``` r
+# Stratify by population cluster
+
+for (column_i in 1:length(phenotype_columns)) {
+  
+  column <- phenotype_columns[column_i]
+     
+  sub_column <- paste0(column, "_eur_core")
+     
+  phenotype_data[[sub_column]] <- ifelse(phenotype_data$pop_inference == "EUR_core", phenotype_data[[column]], NA)
+     
+     print(glue("Number of 'EUR_core' for '{column_name}' GWAS: {sum(!is.na(phenotype_data[[sub_column]]))}"))
+     
+}
+```
+
+    Number of 'EUR_core' for 'Birth weight' GWAS: 65581
+
 ### Convert factors to numbers, save table of phenotypes
 
 ``` r
@@ -582,7 +627,7 @@ if (!dir.exists(gwas_pheno_file_directory)) {
 gwas_pheno_file_path <- file.path(gwas_pheno_file_directory, glue("{gwas_settings$pheno_table_name}.gz"))
 
 
-# Convert factors to numeric
+# Convert factors to numeric, not that you might need to use one-hot encoding for some variables
 
 phenotype_data_gwas <- phenotype_data
 

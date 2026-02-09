@@ -3,10 +3,10 @@
 id: base_gwas
 name: Base GWAS
 description: Genome-wide analysis base pipeline for the [Norwegian Mother, Father and Child Cohort Study (MoBa)](https://www.fhi.no/en/ch/studies/moba).
-release: "2026.01.06"
+release: "2026.02.05"
 pheno_version: v12
 pheno_release: pheno_anthropometrics_25-12-12_hdgb
-pheno_table_name: phenotypes_26-01-08
+pheno_table_name: phenotypes_26-02-05 # Table where to get the phenotypes
 work_folder: /mnt/work/marc/moba # Folder where the results should be stored
 scratch_folder: /mnt/scratch/marc/moba # Folder where intermediate files should be stored
 
@@ -20,10 +20,105 @@ analyses:
       covariates:
         - n_previous_deliveries
         - pregnancy_duration
+        - sex
+        - plural_birth
       populations:
         - children
         - mothers
         - fathers
         - parents
+
+  birth_weight_pcs:
+      name: Birth weight test PCs
+      description: GWAS of birth weight using PCs as covariates
+      phenotype: weight_birth
+      phenotype_name: Birth weight
+      phenotype_type: quantitative
+      covariates:
+        - n_previous_deliveries
+        - pregnancy_duration
+        - sex
+        - plural_birth
+        - PC1
+        - PC2
+        - PC3
+        - PC4
+        - PC5
+        - PC6
+        - PC7
+        - PC8
+        - PC9
+        - PC10
+      populations:
+        - children
+        - mothers
+        - fathers
+        - parents
+        
+  birth_weight_core:
+      name: Birth weight test ceu core
+      description: GWAS of birth weight in the CEU core population
+      phenotype: weight_birth_eur_core
+      phenotype_name: Birth weight
+      phenotype_type: quantitative
+      covariates:
+        - n_previous_deliveries
+        - pregnancy_duration
+        - sex
+        - plural_birth
+      populations:
+        - children
+        
+  birth_weight_core_pcs:
+      name: Birth weight test ceu core PCs
+      description: GWAS of birth weight in the CEU core population using PCs as covariates
+      phenotype: weight_birth_eur_core
+      phenotype_name: Birth weight
+      phenotype_type: quantitative
+      covariates:
+        - n_previous_deliveries
+        - pregnancy_duration
+        - sex
+        - plural_birth
+        - PC1
+        - PC2
+        - PC3
+        - PC4
+        - PC5
+        - PC6
+        - PC7
+        - PC8
+        - PC9
+        - PC10
+      populations:
+        - children
+        
+  # birth_weight_male:
+  #     name: Birth weight test in males
+  #     description: GWAS of birth weight in males 
+  #     phenotype: weight_birth_male
+  #     phenotype_name: Birth weight
+  #     phenotype_type: quantitative
+  #     covariates:
+  #       - n_previous_deliveries
+  #       - pregnancy_duration
+  #       - sex
+  #       - plural_birth
+  #     populations:
+  #       - children
+  #       
+  # birth_weight_female:
+  #     name: Birth weight test in females
+  #     description: GWAS of birth weight in females 
+  #     phenotype: weight_birth_female
+  #     phenotype_name: Birth weight
+  #     phenotype_type: quantitative
+  #     covariates:
+  #       - n_previous_deliveries
+  #       - pregnancy_duration
+  #       - sex
+  #       - plural_birth
+  #     populations:
+  #       - children
         
         
