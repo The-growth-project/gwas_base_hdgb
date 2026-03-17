@@ -8,6 +8,9 @@ documentation of phenotypic distribution.
 
 ### Libraries and settings
 
+If packages are missing, install them following these
+[instructions](https://docs.hdc.ntnu.no/do-science/hunt-workbench/getting-started/5-rstudio#r-packages).
+
 ``` r
 library(here)
 ```
@@ -626,7 +629,12 @@ if (!dir.exists(gwas_pheno_file_directory)) {
 
 gwas_pheno_file_path <- file.path(gwas_pheno_file_directory, glue("{gwas_settings$pheno_table_name}.gz"))
 
+print(glue("Writing phenotypes file to '{gwas_pheno_file_path}'."))
+```
 
+    Writing phenotypes file to '/mnt/work/marc/moba/base_gwas/2026.02.05/pheno/v12/pheno_anthropometrics_25-12-12_hdgb/phenotypes_26-02-05.gz'.
+
+``` r
 # Convert factors to numeric, not that you might need to use one-hot encoding for some variables
 
 phenotype_data_gwas <- phenotype_data
