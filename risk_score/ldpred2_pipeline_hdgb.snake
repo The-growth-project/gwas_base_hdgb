@@ -21,9 +21,9 @@ import random
 score_file = '/mnt/work/marc/egg/placental_weight/pw_fetal_sex_gest.gz'
 score_name = 'placental_weight'
 
-documentation_folder <- 'docs' # For QC and documentation, no individual-level data should be saved there
+documentation_folder = 'docs' # For QC and documentation, no individual-level data should be saved there
 
-output_folder <- "/mnt/work/marc/moba/base_gwas/score/2026.03.07"
+output_folder = "/mnt/work/marc/moba/base_gwas/score/2026.03.07"
 
 
 ####################### Housekeeping #########################################
