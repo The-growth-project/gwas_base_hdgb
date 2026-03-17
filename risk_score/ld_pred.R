@@ -13,12 +13,14 @@
 
 # Analysis files, need to be updated for every analysis
 
-score_file <- "/mnt/work/marc/egg/placental_weight/pw_fetal_sex_gest.gz"
-score_name <- "placental_weight"
+args <- commandArgs(TRUE)
 
-documentation_folder <- "/mnt/work/marc/github/moba/gwas_base_hdgb/risk_score/docs" # For QC and documentation, no individual-level data should be saved there
+score_file <- args[1]
+score_name <- args[2]
 
-output_folder <- "/mnt/work/marc/moba/base_gwas/score/2026.03.07"
+documentation_folder <- args[3] # For QC and documentation, no individual-level data should be saved there
+
+output_folder <- args[4]
 intermediate_folder <- file.path(output_folder, "ldpred2_files")
 
 

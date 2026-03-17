@@ -1,0 +1,68 @@
+import os
+import math
+import random
+
+
+###################################################################################################
+#
+# This script runs ldpred2 on the HDGB release 
+#
+# Commands to execute from the repository folder:
+# conda activate snakemake
+# snakemake --snakefile risk_score/ldpred2_pipeline_hdgb.snake --cores 12 --use-conda --rerun-incomplete
+#
+# Tips:
+# - Adjust the number of cores based on the load of the server, adjust the number of cores used by each rule accordingly. 
+# - Consider running first a dry run using the '-n' option
+# - To restart a run without loosing output try using the '-t' option
+#
+###################################################################################################
+
+score_file = '/mnt/work/marc/egg/placental_weight/pw_fetal_sex_gest.gz'
+score_name = 'placental_weight'
+
+documentation_folder <- 'docs' # For QC and documentation, no individual-level data should be saved there
+
+output_folder <- "/mnt/work/marc/moba/base_gwas/score/2026.03.07"
+
+
+####################### Housekeeping #########################################
+
+if not os.path.isdir(output_folder):
+    os.makedirs(output_folder)
+
+if not os.path.isdir(documentation_folder):
+    os.makedirs(documentation_folder)
+
+
+############################## RULES ###########################################
+
+
+print(f'Starting PRS pipeline for {score_name}.')
+rule all:
+    'The final output rule'
+    input:
+        # The plink weights
+        weight_file = os.path.join(output_folder, f'{score_name}_weights_plink_format')
+
+rule weight:
+    'Computes the weight using ldpred2.'
+    input:
+        score_file = score_file,
+    params:
+        score_name = score_name,
+        documentation_folder = documentation_folder,
+        output_folder = output_folder
+    output:
+        weight_file = os.path.join(output_folder, f'{score_name}_weights_plink_format')
+    conda:
+        "envs/r_ldpred2.yaml"
+    threads: 1
+    shell:
+        """
+        Rscript risk_score/ldpred.R \
+          {input.score_file} \
+          {params.score_name} \
+          {params.documentation_folder} \
+          {params.output_folder}
+        """
