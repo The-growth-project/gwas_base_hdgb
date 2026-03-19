@@ -77,7 +77,7 @@ rule weight_computation:
 rule moba_score:
     'Scores MoBa participants'
     input:
-        plink_release_pgenset = multiext(plink_release_stem, ".pgen", ".pvar", ".psam"),
+        plink_release_pgenset = multiext(plink_release_stem, ".bed", ".bim", ".fam"),
         score_file =  rules.weight_computation.output.weight_file
     params:
         genotypes = plink_release_stem
@@ -88,5 +88,5 @@ rule moba_score:
     threads: 1
     shell:
         """
-        plink2 -pfile {params.genotypes} --score {input.score_file} --out {output.scores}
+        plink2 -bfile {params.genotypes} --score {input.score_file} --out {output.scores}
         """
