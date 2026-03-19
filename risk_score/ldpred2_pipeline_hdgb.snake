@@ -25,6 +25,11 @@ documentation_folder = 'docs' # For QC and documentation, no individual-level da
 
 output_folder = "/mnt/work/marc/moba/base_gwas/score/2026.03.07"
 
+# Genotype files
+moba_base_path = '/mnt/archive/moba'
+moba_genotypes_folder = os.path.join(moba_base_path, 'geno', 'HDGB-MoBaGenetics', '2025.09.25')
+plink_release_stem = os.path.join(moba_genotypes_folder, 'moba_genotypes_2025.09.25_common')
+
 
 ####################### Housekeeping #########################################
 
@@ -44,8 +49,10 @@ rule all:
     input:
         # The plink weights
         weight_file = os.path.join(output_folder, f'{score_name}_weights_plink_format')
+        # The scores
+        scores = os.path.join(output_folder, "{score_name}_moba_scores")
 
-rule weight:
+rule weight_computation:
     'Computes the weight using ldpred2.'
     input:
         score_file = score_file,
@@ -65,4 +72,21 @@ rule weight:
           {params.score_name} \
           {params.documentation_folder} \
           {params.output_folder}
+        """
+
+rule moba_score:
+    'Scores MoBa participants'
+    input:
+        plink_release_pgenset = multiext(plink_release_stem, ".pgen", ".pvar", ".psam"),
+        score_file =  rules.weight_computation.output.weight_file
+    params:
+        genotypes = plink_release_stem
+    output:
+        scores = os.path.join(output_folder, "{score_name}_moba_scores")
+    conda:
+        "envs/plink_2.yaml"
+    threads: 1
+    shell:
+        """
+        plink2 -pfile {params.genotypes} --score {input.score_file} --out {output.scores}
         """
