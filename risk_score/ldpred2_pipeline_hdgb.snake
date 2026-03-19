@@ -67,7 +67,7 @@ rule weight_computation:
     threads: 1
     shell:
         """
-        Rscript risk_score/ldpred.R \
+        Rscript risk_score/ld_pred.R \
           {input.score_file} \
           {params.score_name} \
           {params.documentation_folder} \
