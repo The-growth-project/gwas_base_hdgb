@@ -29,6 +29,7 @@ output_folder = "/mnt/work/marc/moba/base_gwas/score/2026.03.07"
 moba_base_path = '/mnt/archive/moba'
 moba_genotypes_folder = os.path.join(moba_base_path, 'geno', 'HDGB-MoBaGenetics', '2025.09.25')
 plink_release_stem = os.path.join(moba_genotypes_folder, 'moba_genotypes_2025.09.25_common')
+independent_ids = os.path.join(moba_base_path, 'pheno/v12/pheno_anthropometrics_25-12-12_hdgb/id/children_id_unrelated_plink')
 
 
 ####################### Housekeeping #########################################
@@ -48,9 +49,9 @@ rule all:
     'The final output rule'
     input:
         # The plink weights
-        weight_file = os.path.join(output_folder, f'{score_name}_weights_plink_format')
+        weight_file = os.path.join(output_folder, f'{score_name}_weights_plink_format'),
         # The scores
-        scores = os.path.join(output_folder, "{score_name}_moba_scores")
+        scores = os.path.join(output_folder, f"{score_name}_moba_scores.sscore")
 
 rule weight_computation:
     'Computes the weight using ldpred2.'
@@ -74,19 +75,38 @@ rule weight_computation:
           {params.output_folder}
         """
 
+rule moba_freq:
+    'Computes allele frequencies'
+    input:
+        plink_release_pgenset = multiext(plink_release_stem, ".bed", ".bim", ".fam"),
+        ids = independent_ids
+    params:
+        genotypes = plink_release_stem,
+        utils_stem = os.path.join(moba_genotypes_folder, 'utils', "moba_genotypes_2025.09.25_common")
+    output:
+        freq_file = os.path.join(moba_genotypes_folder, 'utils', "moba_genotypes_2025.09.25_common.afreq")
+    conda:
+        "envs/plink_2.yaml"
+    threads: 1
+    shell:
+        """
+        plink2 -bfile {params.genotypes} --keep {input.ids} --freq --out {params.utils_stem}
+        """
+
 rule moba_score:
     'Scores MoBa participants'
     input:
         plink_release_pgenset = multiext(plink_release_stem, ".bed", ".bim", ".fam"),
         score_file =  rules.weight_computation.output.weight_file
     params:
-        genotypes = plink_release_stem
-    output:
+        genotypes = plink_release_stem,
         scores = os.path.join(output_folder, "{score_name}_moba_scores")
+    output:
+        scores = os.path.join(output_folder, "{score_name}_moba_scores.sscore")
     conda:
         "envs/plink_2.yaml"
     threads: 1
     shell:
         """
-        plink2 -bfile {params.genotypes} --score {input.score_file} --out {output.scores}
+        plink2 -bfile {params.genotypes} --score {input.score_file} --list-variants --out {params.scores}
         """

@@ -1,0 +1,113 @@
+---
+title: "prs"
+format: gmf
+editor: visual
+---
+
+## PRS
+
+This notebook plots the results of the risk score analysis.
+
+```{r}
+
+library(tidyr)
+
+```
+
+## Data
+
+```{r}
+
+# Load ldpred results
+ldpred <- read.table(
+  file = "/mnt/work/marc/moba/base_gwas/score/2026.03.07/placental_weight_moba_scores.sscore",
+  header = F
+)
+names(ldpred) <- c("fid", "sentrix_id", "allele_count", "allele_dosage_sum", "score")
+
+# Load phenotype
+phenotype <- read.table(
+  file = "/mnt/archive/moba/pheno/v12/pheno_anthropometrics_26-03-23_hdgb/mfr.gz",
+  header = T,
+  sep = "\t"
+)
+
+# Merge
+merged_data_child <- phenotype %>%
+  select(
+    sentrix_id = child_sentrix_id, placental_weight
+  ) %>% 
+  filter(
+    !is.na(sentrix_id) & !is.na(placental_weight) & placental_weight > 100 & placental_weight < 2000
+  ) %>% 
+  left_join(
+    ldpred,
+    by = "sentrix_id"
+  )
+
+```
+
+## Plots
+
+```{r}
+
+ggplot() +
+  geom_histogram(
+    data = merged_data_child,
+    mapping = aes(
+      x = score
+    )
+  )
+
+```
+
+```{r}
+
+ggplot() +
+  geom_histogram(
+    data = merged_data_child,
+    mapping = aes(
+      x = placental_weight
+    )
+  )
+
+```
+
+```{r}
+
+ggplot(
+  data = merged_data_child,
+    mapping = aes(
+      x = -score,
+      y = placental_weight
+    )
+) +
+  geom_point() +
+  geom_density_2d(
+    col = "white"
+  ) +
+  geom_smooth(
+    method = "lm"
+  )
+  
+
+```
+
+```{r}
+
+ggplot(
+  data = merged_data_child %>% 
+    mutate(
+      prs_decile = factor(ntile(-score, 10), 1:10)
+    ),
+    mapping = aes(
+      x = prs_decile,
+      y = placental_weight
+    )
+) +
+  geom_violin() +
+  geom_boxplot(
+    width = 0.3
+  )
+
+```

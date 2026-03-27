@@ -1,5 +1,6 @@
 name: plink_2
 channels:
   - bioconda
+  - conda-forge
 dependencies:
   - plink2
