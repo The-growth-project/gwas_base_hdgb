@@ -29,7 +29,7 @@ output_folder = "/mnt/work/marc/moba/base_gwas/score/2026.03.07"
 moba_base_path = '/mnt/archive/moba'
 moba_genotypes_folder = os.path.join(moba_base_path, 'geno', 'HDGB-MoBaGenetics', '2025.09.25')
 plink_release_stem = os.path.join(moba_genotypes_folder, 'moba_genotypes_2025.09.25_common')
-independent_ids = os.path.join(moba_base_path, 'pheno/v12/pheno_anthropometrics_25-12-12_hdgb/id/children_id_unrelated_plink')
+independent_ids = os.path.join(moba_base_path, 'pheno/v12/pheno_anthropometrics_26-03-23_hdgb/id/children_id_ceu_unrelated_plink')
 
 
 ####################### Housekeeping #########################################
@@ -84,7 +84,7 @@ rule moba_freq:
         genotypes = plink_release_stem,
         utils_stem = os.path.join(moba_genotypes_folder, 'utils', "moba_genotypes_2025.09.25_common")
     output:
-        freq_file = os.path.join(moba_genotypes_folder, 'utils', "moba_genotypes_2025.09.25_common.afreq")
+        freq_file = os.path.join(moba_genotypes_folder, 'utils', "moba_genotypes_2025.09.25_common_ceu.afreq")
     conda:
         "envs/plink_2.yaml"
     threads: 1
@@ -97,7 +97,8 @@ rule moba_score:
     'Scores MoBa participants'
     input:
         plink_release_pgenset = multiext(plink_release_stem, ".bed", ".bim", ".fam"),
-        score_file =  rules.weight_computation.output.weight_file
+        score_file =  rules.weight_computation.output.weight_file,
+        freq_file =  rules.moba_freq.output.freq_file
     params:
         genotypes = plink_release_stem,
         scores = os.path.join(output_folder, "{score_name}_moba_scores")
@@ -108,5 +109,5 @@ rule moba_score:
     threads: 1
     shell:
         """
-        plink2 -bfile {params.genotypes} --score {input.score_file} list-variants --out {params.scores}
+        plink2 -bfile {params.genotypes}--read-freq {input.freq_file} --score {input.score_file} list-variants --out {params.scores}
         """
