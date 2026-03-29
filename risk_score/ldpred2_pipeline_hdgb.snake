@@ -108,5 +108,5 @@ rule moba_score:
     threads: 1
     shell:
         """
-        plink2 -bfile {params.genotypes} --score {input.score_file} --list-variants --out {params.scores}
+        plink2 -bfile {params.genotypes} --score {input.score_file} list-variants --out {params.scores}
         """
