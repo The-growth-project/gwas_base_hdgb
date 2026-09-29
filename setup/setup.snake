@@ -9,7 +9,7 @@ import random
 #
 # Commands to execute from the repository folder:
 # conda activate snakemake
-# snakemake --snakefile risk_score/ldpred2_pipeline_hdgb.snake --cores 12 --use-conda --rerun-incomplete
+# snakemake --snakefile setup/setup.snake --cores 1 --use-conda --rerun-incomplete
 #
 ###################################################################################################
 
@@ -22,6 +22,7 @@ base_name = 'moba_genotypes_2025.09.25'
 # Genotype files
 plink_common_stem = os.path.join(release_path, f'{base_name}_common')
 plink_unrelated_stem = os.path.join(release_path, f'{base_name}_unrelated_30k')
+genotypes_utils_folder = os.path.join(release_path, 'utils')
 
 # Phenotype files
 unrelated_ids = os.path.join(moba_base_path, 'pheno/v12/pheno_anthropometrics_26-03-23_hdgb/id/children_id_ceu_unrelated_plink')
@@ -31,11 +32,8 @@ unrelated_ids_30k = os.path.join(moba_base_path, 'pheno/v12/pheno_anthropometric
 
 ####################### Housekeeping #########################################
 
-if not os.path.isdir(output_folder):
-    os.makedirs(output_folder)
-
-if not os.path.isdir(documentation_folder):
-    os.makedirs(documentation_folder)
+if not os.path.isdir(genotypes_utils_folder):
+    os.makedirs(genotypes_utils_folder)
 
 
 ############################## RULES ###########################################
@@ -49,9 +47,9 @@ rule moba_freq:
         ids = unrelated_ids
     params:
         genotypes = plink_release_stem,
-        utils_stem = os.path.join(moba_genotypes_folder, 'utils', "moba_genotypes_2025.09.25_common")
+        utils_stem = os.path.join(genotypes_utils_folder, "moba_genotypes_2025.09.25_common")
     output:
-        freq_file = os.path.join(moba_genotypes_folder, 'utils', "moba_genotypes_2025.09.25_common_ceu.afreq")
+        freq_file = os.path.join(genotypes_utils_folder, "moba_genotypes_2025.09.25_common_ceu.afreq")
     conda:
         "envs/plink_2.yaml"
     threads: 1
