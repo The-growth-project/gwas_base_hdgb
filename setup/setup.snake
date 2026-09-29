@@ -58,7 +58,7 @@ rule moba_freq:
         plink2 -bfile {params.genotypes} --keep {input.ids} --freq --out {params.utils_stem}
         """
 
-rule moba_score:
+rule moba_independent:
     'Writes a plink files with 30k unrelated kids'
     input:
         plink_release_pgenset = multiext(plink_common_stem, ".bed", ".bim", ".fam"),
@@ -67,7 +67,7 @@ rule moba_score:
         genotypes = plink_common_stem,
         genotypes_unrelated = plink_unrelated_stem
     output:
-        plink_release_pgenset = multiext(plink_common_stem, ".bed", ".bim", ".fam")
+        plink_release_pgenset = multiext(plink_unrelated_stem, ".bed", ".bim", ".fam")
     conda:
         "envs/plink_2.yaml"
     threads: 1
