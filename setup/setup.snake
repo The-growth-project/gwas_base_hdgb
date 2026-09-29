@@ -43,10 +43,10 @@ print(f'Setting up files for release {base_name}')
 rule moba_freq:
     'Computes allele frequencies'
     input:
-        plink_release_pgenset = multiext(plink_release_stem, ".bed", ".bim", ".fam"),
+        plink_release_pgenset = multiext(plink_common_stem, ".bed", ".bim", ".fam"),
         ids = unrelated_ids
     params:
-        genotypes = plink_release_stem,
+        genotypes = plink_common_stem,
         utils_stem = os.path.join(genotypes_utils_folder, "moba_genotypes_2025.09.25_common")
     output:
         freq_file = os.path.join(genotypes_utils_folder, "moba_genotypes_2025.09.25_common_ceu.afreq")
@@ -61,13 +61,13 @@ rule moba_freq:
 rule moba_score:
     'Writes a plink files with 30k unrelated kids'
     input:
-        plink_release_pgenset = multiext(plink_release_stem, ".bed", ".bim", ".fam"),
+        plink_release_pgenset = multiext(plink_common_stem, ".bed", ".bim", ".fam"),
         ids = unrelated_ids_30k
     params:
-        genotypes = plink_release_stem,
+        genotypes = plink_common_stem,
         genotypes_unrelated = plink_unrelated_stem
     output:
-        plink_release_pgenset = multiext(plink_unrelated_stem, ".bed", ".bim", ".fam")
+        plink_release_pgenset = multiext(plink_common_stem, ".bed", ".bim", ".fam")
     conda:
         "envs/plink_2.yaml"
     threads: 1
