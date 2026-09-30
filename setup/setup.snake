@@ -44,7 +44,7 @@ rule all:
     'The files expected to be created'
     input:
         plink_release_pgenset = multiext(plink_unrelated_stem, ".bed", ".bim", ".fam"),
-        freq_file = os.path.join(genotypes_utils_folder, "moba_genotypes_2025.09.25_common_ceu.afreq")
+        # freq_file = os.path.join(genotypes_utils_folder, "moba_genotypes_2025.09.25_common_ceu.afreq")
 
 
 rule moba_freq:
@@ -54,7 +54,7 @@ rule moba_freq:
         ids = unrelated_ids
     params:
         genotypes = plink_common_stem,
-        utils_stem = os.path.join(genotypes_utils_folder, "moba_genotypes_2025.09.25_common")
+        utils_stem = os.path.join(genotypes_utils_folder, "moba_genotypes_2025.09.25_common_ceu")
     output:
         freq_file = os.path.join(genotypes_utils_folder, "moba_genotypes_2025.09.25_common_ceu.afreq")
     conda:
